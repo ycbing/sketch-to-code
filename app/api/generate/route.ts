@@ -43,8 +43,8 @@ export async function POST(req: Request) {
         ],
       },
     ],
-    maxTokens: 4096,
+    maxOutputTokens: 4096,
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

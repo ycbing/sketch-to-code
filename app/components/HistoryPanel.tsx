@@ -5,6 +5,15 @@ import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/zh-cn";
+import {
+  getAllProjects,
+  createProject,
+  deleteProject as dbDeleteProject,
+  getProjectVersions,
+  createVersion,
+  getVersion,
+  deleteVersion as dbDeleteVersion,
+} from "@/lib/db";
 
 dayjs.extend(relativeTime);
 dayjs.locale("zh-cn");
@@ -69,9 +78,14 @@ export default function HistoryPanel({
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch("/api/projects");
-      const data = await res.json();
-      setProjects(data);
+      const data = await getAllProjects();
+      setProjects(
+        data.map((p) => ({
+          ...p,
+          updatedAt: new Date(p.updatedAt).toISOString(),
+          versions: [],
+        })),
+      );
     } catch (error) {
       console.error("加载项目失败:", error);
     } finally {
@@ -84,9 +98,13 @@ export default function HistoryPanel({
     setSelectedProject(project);
 
     try {
-      const res = await fetch(`/api/projects/${project.id}/versions`);
-      const data = await res.json();
-      setVersions(data);
+      const data = await getProjectVersions(project.id);
+      setVersions(
+        data.map((v) => ({
+          ...v,
+          createdAt: new Date(v.createdAt).toISOString(),
+        })),
+      );
     } catch (error) {
       console.error("加载版本失败:", error);
     }
@@ -97,15 +115,14 @@ export default function HistoryPanel({
     if (!newProjectName.trim()) return;
 
     try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newProjectName }),
-      });
-
-      const project = await res.json();
-      setProjects([project, ...projects]);
-      setSelectedProject(project);
+      const project = await createProject(newProjectName);
+      const projectWithVersions = {
+        ...project,
+        updatedAt: new Date(project.updatedAt).toISOString(),
+        versions: [],
+      };
+      setProjects([projectWithVersions, ...projects]);
+      setSelectedProject(projectWithVersions);
       setVersions([]);
       setShowNewProject(false);
       setNewProjectName("");
@@ -121,19 +138,19 @@ export default function HistoryPanel({
     setSaving(true);
 
     try {
-      const res = await fetch(`/api/projects/${selectedProject.id}/versions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sketchData: currentSketchData,
-          sketchImage: currentSketchImage,
-          generatedCode: currentCode,
-          requirements: currentRequirements,
-        }),
+      const version = await createVersion(selectedProject.id, {
+        sketchData: currentSketchData,
+        sketchImage: currentSketchImage || "",
+        generatedCode: currentCode,
+        requirements: currentRequirements,
       });
-
-      const version = await res.json();
-      setVersions([version, ...versions]);
+      setVersions([
+        {
+          ...version,
+          createdAt: new Date(version.createdAt).toISOString(),
+        },
+        ...versions,
+      ]);
     } catch (error) {
       console.error("保存失败:", error);
     } finally {
@@ -144,16 +161,14 @@ export default function HistoryPanel({
   // 加载版本
   const handleLoadVersion = async (version: Version) => {
     try {
-      const res = await fetch(
-        `/api/projects/${selectedProject!.id}/versions/${version.id}`,
-      );
-      const data = await res.json();
-
-      onLoadVersion({
-        sketchData: data.sketchData,
-        sketchImage: data.sketchImage,
-        generatedCode: data.generatedCode,
-      });
+      const data = await getVersion(version.id);
+      if (data) {
+        onLoadVersion({
+          sketchData: data.sketchData,
+          sketchImage: data.sketchImage,
+          generatedCode: data.generatedCode,
+        });
+      }
     } catch (error) {
       console.error("加载版本失败:", error);
     }
@@ -166,11 +181,7 @@ export default function HistoryPanel({
     if (!confirm("确定要删除这个版本吗？")) return;
 
     try {
-      await fetch(
-        `/api/projects/${selectedProject!.id}/versions/${version.id}`,
-        { method: "DELETE" },
-      );
-
+      await dbDeleteVersion(version.id);
       setVersions(versions.filter((v) => v.id !== version.id));
     } catch (error) {
       console.error("删除失败:", error);
@@ -186,7 +197,7 @@ export default function HistoryPanel({
     }
 
     try {
-      await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
+      await dbDeleteProject(project.id);
       setProjects(projects.filter((p) => p.id !== project.id));
 
       if (selectedProject?.id === project.id) {

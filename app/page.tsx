@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useCompletion } from "ai/react";
+import { useCompletion } from "@ai-sdk/react";
 import AdvancedCanvas from "./components/AdvancedCanvas";
 import CodePreview from "./components/CodePreview";
 import CodeExporter from "./components/CodeExporter";

@@ -2,7 +2,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import fabric from "fabric";
+import {
+  Canvas,
+  Object,
+  Rect,
+  Line,
+  Ellipse,
+  Image,
+  ITextEvents,
+  IText,
+  Polyline,
+} from "fabric";
 import { useDebouncedCallback } from "use-debounce";
 import {
   MousePointer2,
@@ -75,7 +85,7 @@ export default function AdvancedCanvas({
   initialData,
 }: AdvancedCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const fabricRef = useRef<Canvas | null>(null);
 
   const [activeTool, setActiveTool] = useState<ToolType>("select");
   const [strokeColor, setStrokeColor] = useState("#000000");
@@ -93,13 +103,13 @@ export default function AdvancedCanvas({
 
   // 图层面板
   const [showLayers, setShowLayers] = useState(false);
-  const [objects, setObjects] = useState<fabric.Object[]>([]);
+  const [objects, setObjects] = useState<Object[]>([]);
 
   // 初始化 Canvas
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    const canvas = new Canvas(canvasRef.current, {
       width: 800,
       height: 600,
       backgroundColor: "#ffffff",
@@ -209,7 +219,7 @@ export default function AdvancedCanvas({
 
     // 绘制新网格
     for (let i = 0; i < width / gridSize; i++) {
-      const line = new fabric.Line([i * gridSize, 0, i * gridSize, height], {
+      const line = new Line([i * gridSize, 0, i * gridSize, height], {
         stroke: "#e5e7eb",
         strokeWidth: 1,
         selectable: false,
@@ -217,11 +227,11 @@ export default function AdvancedCanvas({
         name: "grid",
       });
       canvas.add(line);
-      canvas.sendToBack(line);
+      // canvas.sendToBack(line);
     }
 
     for (let i = 0; i < height / gridSize; i++) {
-      const line = new fabric.Line([0, i * gridSize, width, i * gridSize], {
+      const line = new Line([0, i * gridSize, width, i * gridSize], {
         stroke: "#e5e7eb",
         strokeWidth: 1,
         selectable: false,
@@ -229,7 +239,7 @@ export default function AdvancedCanvas({
         name: "grid",
       });
       canvas.add(line);
-      canvas.sendToBack(line);
+      // canvas.sendToBack(line);
     }
   };
 
@@ -258,14 +268,18 @@ export default function AdvancedCanvas({
 
       case "pencil":
         canvas.isDrawingMode = true;
-        canvas.freeDrawingBrush.color = strokeColor;
-        canvas.freeDrawingBrush.width = strokeWidth;
+        canvas.freeDrawingBrush = {
+          color: strokeColor,
+          width: strokeWidth,
+        };
         break;
 
       case "eraser":
         canvas.isDrawingMode = true;
-        canvas.freeDrawingBrush.color = "#ffffff";
-        canvas.freeDrawingBrush.width = strokeWidth * 3;
+        canvas.freeDrawingBrush = {
+          color: "#ffffff",
+          width: strokeWidth * 3,
+        };
         break;
 
       case "rectangle":
@@ -298,7 +312,7 @@ export default function AdvancedCanvas({
 
     let startX = 0;
     let startY = 0;
-    let currentShape: fabric.Object | null = null;
+    let currentShape: Object | null = null;
 
     canvas.defaultCursor = "crosshair";
     canvas.selection = false;
@@ -320,21 +334,21 @@ export default function AdvancedCanvas({
 
       switch (shape) {
         case "rectangle":
-          currentShape = new fabric.Rect({
+          currentShape = new Rect({
             ...options,
             width: 0,
             height: 0,
           });
           break;
         case "circle":
-          currentShape = new fabric.Ellipse({
+          currentShape = new Ellipse({
             ...options,
             rx: 0,
             ry: 0,
           });
           break;
         case "line":
-          currentShape = new fabric.Line([startX, startY, startX, startY], {
+          currentShape = new Line([startX, startY, startX, startY], {
             stroke: strokeColor,
             strokeWidth: strokeWidth,
             selectable: true,
@@ -359,7 +373,7 @@ export default function AdvancedCanvas({
 
       switch (shape) {
         case "rectangle":
-          (currentShape as fabric.Rect).set({
+          (currentShape as Rect).set({
             width: Math.abs(width),
             height: Math.abs(height),
             left: width > 0 ? startX : pointer.x,
@@ -367,7 +381,7 @@ export default function AdvancedCanvas({
           });
           break;
         case "circle":
-          (currentShape as fabric.Ellipse).set({
+          (currentShape as Ellipse).set({
             rx: Math.abs(width) / 2,
             ry: Math.abs(height) / 2,
             left: startX - Math.abs(width) / 2,
@@ -375,7 +389,7 @@ export default function AdvancedCanvas({
           });
           break;
         case "line":
-          (currentShape as fabric.Line).set({
+          (currentShape as Line).set({
             x2: pointer.x,
             y2: pointer.y,
           });
@@ -416,7 +430,7 @@ export default function AdvancedCanvas({
       },
     ];
 
-    return new fabric.Polyline(points, {
+    return new Polyline(points, {
       stroke: strokeColor,
       strokeWidth: strokeWidth,
       fill: "",
@@ -425,11 +439,11 @@ export default function AdvancedCanvas({
   };
 
   // 文字点击处理
-  const handleTextClick = (e: fabric.IEvent<MouseEvent>) => {
+  const handleTextClick = (e: MouseEvent) => {
     if (!fabricRef.current) return;
 
     const pointer = fabricRef.current.getPointer(e.e);
-    const text = new fabric.IText("双击编辑", {
+    const text = new IText("双击编辑", {
       left: pointer.x,
       top: pointer.y,
       fontSize: fontSize,
@@ -450,7 +464,7 @@ export default function AdvancedCanvas({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      fabric.Image.fromURL(event.target?.result as string, (img) => {
+      Image.fromURL(event.target?.result as string, (img) => {
         // 限制图片大小
         const maxSize = 300;
         if (img.width! > maxSize || img.height! > maxSize) {
@@ -490,7 +504,7 @@ export default function AdvancedCanvas({
     const activeObject = fabricRef.current.getActiveObject();
     if (!activeObject) return;
 
-    activeObject.clone((cloned: fabric.Object) => {
+    activeObject.clone((cloned: Object) => {
       cloned.set({
         left: (cloned.left || 0) + 20,
         top: (cloned.top || 0) + 20,
@@ -558,7 +572,7 @@ export default function AdvancedCanvas({
   };
 
   // 图层选择
-  const handleLayerSelect = (obj: fabric.Object) => {
+  const handleLayerSelect = (obj: Object) => {
     if (!fabricRef.current) return;
     fabricRef.current.setActiveObject(obj);
     fabricRef.current.renderAll();
