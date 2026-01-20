@@ -1,65 +1,147 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useCallback } from "react";
+import { useCompletion } from "ai/react";
+import AdvancedCanvas from "./components/AdvancedCanvas";
+import CodePreview from "./components/CodePreview";
+import CodeExporter from "./components/CodeExporter";
+import HistoryPanel from "./components/HistoryPanel";
+import { Sparkles, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 export default function Home() {
+  const [sketchImage, setSketchImage] = useState("");
+  const [sketchData, setSketchData] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [showHistory, setShowHistory] = useState(true);
+
+  const { completion, isLoading, complete } = useCompletion({
+    api: "/api/generate",
+  });
+
+  const handleExport = async (imageData: string) => {
+    setSketchImage(imageData);
+    await complete("", {
+      body: { image: imageData, requirements },
+    });
+  };
+
+  const handleCanvasSave = (data: string) => {
+    setSketchData(data);
+  };
+
+  const handleLoadVersion = useCallback(
+    (version: {
+      sketchData: string;
+      sketchImage: string;
+      generatedCode: string;
+    }) => {
+      setSketchData(version.sketchData);
+      setSketchImage(version.sketchImage);
+      // 这里需要通知画布组件加载数据
+      // 可以通过 ref 或 context 实现
+    },
+    [],
+  );
+
+  const extractCode = (text: string) => {
+    const match = text.match(/```(?:tsx|jsx)?\n([\s\S]*?)```/);
+    return match ? match[1].trim() : text;
+  };
+
+  const code = completion ? extractCode(completion) : "";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="h-screen flex flex-col bg-gray-100">
+      {/* 头部 */}
+      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-yellow-500" />
+          <h1 className="text-xl font-bold">Sketch to React</h1>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-100 rounded"
+        >
+          {showHistory ? (
+            <PanelLeftClose size={18} />
+          ) : (
+            <PanelLeftOpen size={18} />
+          )}
+          历史记录
+        </button>
+      </header>
+
+      {/* 主体 */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 历史面板 */}
+        {showHistory && (
+          <div className="w-80 p-4 overflow-hidden">
+            <HistoryPanel
+              currentSketchData={sketchData}
+              currentSketchImage={sketchImage}
+              currentCode={code}
+              currentRequirements={requirements}
+              onLoadVersion={handleLoadVersion}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+        )}
+
+        {/* 主工作区 */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+          {/* 左侧：画板 */}
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
+            <div>
+              <label className="block text-sm font-medium mb-2">额外需求</label>
+              <textarea
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                placeholder="例如：深色主题、使用 shadcn/ui..."
+                className="w-full p-3 border rounded-lg resize-none h-16"
+              />
+            </div>
+
+            <div className="flex-1 min-h-0">
+              <AdvancedCanvas
+                onExport={handleExport}
+                onSave={handleCanvasSave}
+                initialData={sketchData}
+              />
+            </div>
+          </div>
+
+          {/* 右侧：预览和导出 */}
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">生成结果</label>
+              {isLoading && (
+                <span className="flex items-center gap-2 text-sm text-blue-500">
+                  <Loader2 className="animate-spin" size={16} />
+                  生成中...
+                </span>
+              )}
+            </div>
+
+            {/* 代码预览 */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {code ? (
+                <CodePreview code={code} />
+              ) : (
+                <div className="h-full border rounded-lg flex items-center justify-center bg-white">
+                  <div className="text-center text-gray-400">
+                    <Sparkles size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>在左侧画出 UI 设计</p>
+                    <p className="text-sm">{`点击"生成代码"开始`}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 导出面板 */}
+            {code && <CodeExporter code={code} sketchImage={sketchImage} />}
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

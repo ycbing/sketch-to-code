@@ -1,0 +1,46 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // 或 sqlite, mysql
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  versions    Version[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Version {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionNum   Int
+  sketchData   String   @db.Text  // Canvas JSON
+  sketchImage  String   @db.Text  // Base64 图片
+  generatedCode String  @db.Text  // 生成的代码
+  requirements String?  // 用户需求描述
+  createdAt    DateTime @default(now())
+
+  @@unique([projectId, versionNum])
+  @@index([projectId])
+}
