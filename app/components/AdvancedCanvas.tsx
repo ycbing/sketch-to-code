@@ -12,6 +12,7 @@ import {
   ITextEvents,
   IText,
   Polyline,
+  PencilBrush,
 } from "fabric";
 import { useDebouncedCallback } from "use-debounce";
 import {
@@ -418,12 +419,20 @@ export default function AdvancedCanvas({
 
       case "pencil":
         canvas.isDrawingMode = true;
+        // Fabric.js 7.x 需要显式创建 PencilBrush
+        if (!canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush = new PencilBrush(canvas);
+        }
         canvas.freeDrawingBrush.color = strokeColor;
         canvas.freeDrawingBrush.width = strokeWidth;
         break;
 
       case "eraser":
         canvas.isDrawingMode = true;
+        // Fabric.js 7.x 需要显式创建 PencilBrush
+        if (!canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush = new PencilBrush(canvas);
+        }
         canvas.freeDrawingBrush.color = "#ffffff";
         canvas.freeDrawingBrush.width = strokeWidth * 3;
         break;
