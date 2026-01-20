@@ -149,13 +149,13 @@ export default function AdvancedCanvas({
   }, []);
 
   // 更新对象列表
-  const updateObjects = () => {
+  const updateObjects = useCallback(() => {
     if (!fabricRef.current) return;
     const objs = fabricRef.current
       .getObjects()
       .filter((obj) => obj.name !== "grid");
     setObjects([...objs]);
-  };
+  }, []);
 
   // 保存历史记录
   const saveToHistory = useDebouncedCallback(() => {
@@ -202,7 +202,7 @@ export default function AdvancedCanvas({
   };
 
   // 绘制网格
-  const drawGrid = () => {
+  const drawGrid = useCallback(() => {
     if (!fabricRef.current) return;
 
     const canvas = fabricRef.current;
@@ -241,72 +241,57 @@ export default function AdvancedCanvas({
       canvas.add(line);
       // canvas.sendToBack(line);
     }
-  };
-
-  // 切换网格
-  useEffect(() => {
-    drawGrid();
   }, [showGrid]);
 
-  // 工具切换
-  useEffect(() => {
+  // 创建箭头
+  const createArrow = useCallback((x1: number, y1: number, x2: number, y2: number) => {
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const headLength = 15;
+
+    const points = [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 },
+      {
+        x: x2 - headLength * Math.cos(angle - Math.PI / 6),
+        y: y2 - headLength * Math.sin(angle - Math.PI / 6),
+      },
+      { x: x2, y: y2 },
+      {
+        x: x2 - headLength * Math.cos(angle + Math.PI / 6),
+        y: y2 - headLength * Math.sin(angle + Math.PI / 6),
+      },
+    ];
+
+    return new Polyline(points, {
+      stroke: strokeColor,
+      strokeWidth: strokeWidth,
+      fill: "",
+      selectable: true,
+    });
+  }, [strokeColor, strokeWidth]);
+
+  // 文字点击处理
+  const handleTextClick = useCallback((e: any) => {
     if (!fabricRef.current) return;
-    const canvas = fabricRef.current;
 
-    // 重置状态
-    canvas.isDrawingMode = false;
-    canvas.selection = true;
-    canvas.defaultCursor = "default";
-    canvas.off("mouse:down");
-    canvas.off("mouse:move");
-    canvas.off("mouse:up");
+    // Fabric.js 7.x 使用 scenePoint 替代 getPointer
+    const pointer = e.scenePoint || { x: 0, y: 0 };
+    const text = new IText("双击编辑", {
+      left: pointer.x,
+      top: pointer.y,
+      fontSize: fontSize,
+      fill: strokeColor,
+      fontFamily: "Arial",
+    });
 
-    switch (activeTool) {
-      case "select":
-        canvas.selection = true;
-        break;
-
-      case "pencil":
-        canvas.isDrawingMode = true;
-        canvas.freeDrawingBrush = {
-          color: strokeColor,
-          width: strokeWidth,
-        };
-        break;
-
-      case "eraser":
-        canvas.isDrawingMode = true;
-        canvas.freeDrawingBrush = {
-          color: "#ffffff",
-          width: strokeWidth * 3,
-        };
-        break;
-
-      case "rectangle":
-        setupShapeDrawing("rectangle");
-        break;
-
-      case "circle":
-        setupShapeDrawing("circle");
-        break;
-
-      case "line":
-        setupShapeDrawing("line");
-        break;
-
-      case "arrow":
-        setupShapeDrawing("arrow");
-        break;
-
-      case "text":
-        canvas.defaultCursor = "text";
-        canvas.on("mouse:down", handleTextClick);
-        break;
-    }
-  }, [activeTool, strokeColor, fillColor, strokeWidth]);
+    fabricRef.current.add(text);
+    fabricRef.current.setActiveObject(text);
+    text.enterEditing();
+    saveToHistory();
+  }, [fontSize, strokeColor, saveToHistory]);
 
   // 形状绘制逻辑
-  const setupShapeDrawing = (shape: string) => {
+  const setupShapeDrawing = useCallback((shape: string) => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
 
@@ -319,7 +304,8 @@ export default function AdvancedCanvas({
 
     canvas.on("mouse:down", (e) => {
       setIsDrawing(true);
-      const pointer = canvas.getPointer(e.e);
+      // Fabric.js 7.x 使用 scenePoint 替代 getPointer
+      const pointer = e.scenePoint || { x: 0, y: 0 };
       startX = pointer.x;
       startY = pointer.y;
 
@@ -367,7 +353,8 @@ export default function AdvancedCanvas({
     canvas.on("mouse:move", (e) => {
       if (!currentShape) return;
 
-      const pointer = canvas.getPointer(e.e);
+      // Fabric.js 7.x 使用 scenePoint 替代 getPointer
+      const pointer = e.scenePoint || { x: 0, y: 0 };
       const width = pointer.x - startX;
       const height = pointer.y - startY;
 
@@ -409,53 +396,60 @@ export default function AdvancedCanvas({
       setIsDrawing(false);
       saveToHistory();
     });
-  };
+  }, [strokeColor, strokeWidth, fillColor, createArrow, saveToHistory]);
 
-  // 创建箭头
-  const createArrow = (x1: number, y1: number, x2: number, y2: number) => {
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const headLength = 15;
-
-    const points = [
-      { x: x1, y: y1 },
-      { x: x2, y: y2 },
-      {
-        x: x2 - headLength * Math.cos(angle - Math.PI / 6),
-        y: y2 - headLength * Math.sin(angle - Math.PI / 6),
-      },
-      { x: x2, y: y2 },
-      {
-        x: x2 - headLength * Math.cos(angle + Math.PI / 6),
-        y: y2 - headLength * Math.sin(angle + Math.PI / 6),
-      },
-    ];
-
-    return new Polyline(points, {
-      stroke: strokeColor,
-      strokeWidth: strokeWidth,
-      fill: "",
-      selectable: true,
-    });
-  };
-
-  // 文字点击处理
-  const handleTextClick = (e: MouseEvent) => {
+  // 工具切换
+  useEffect(() => {
     if (!fabricRef.current) return;
+    const canvas = fabricRef.current;
 
-    const pointer = fabricRef.current.getPointer(e.e);
-    const text = new IText("双击编辑", {
-      left: pointer.x,
-      top: pointer.y,
-      fontSize: fontSize,
-      fill: strokeColor,
-      fontFamily: "Arial",
-    });
+    // 重置状态
+    canvas.isDrawingMode = false;
+    canvas.selection = true;
+    canvas.defaultCursor = "default";
+    canvas.off("mouse:down");
+    canvas.off("mouse:move");
+    canvas.off("mouse:up");
 
-    fabricRef.current.add(text);
-    fabricRef.current.setActiveObject(text);
-    text.enterEditing();
-    saveToHistory();
-  };
+    switch (activeTool) {
+      case "select":
+        canvas.selection = true;
+        break;
+
+      case "pencil":
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush.color = strokeColor;
+        canvas.freeDrawingBrush.width = strokeWidth;
+        break;
+
+      case "eraser":
+        canvas.isDrawingMode = true;
+        canvas.freeDrawingBrush.color = "#ffffff";
+        canvas.freeDrawingBrush.width = strokeWidth * 3;
+        break;
+
+      case "rectangle":
+        setupShapeDrawing("rectangle");
+        break;
+
+      case "circle":
+        setupShapeDrawing("circle");
+        break;
+
+      case "line":
+        setupShapeDrawing("line");
+        break;
+
+      case "arrow":
+        setupShapeDrawing("arrow");
+        break;
+
+      case "text":
+        canvas.defaultCursor = "text";
+        canvas.on("mouse:down", handleTextClick);
+        break;
+    }
+  }, [activeTool, strokeColor, fillColor, strokeWidth, setupShapeDrawing, handleTextClick]);
 
   // 图片上传
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
