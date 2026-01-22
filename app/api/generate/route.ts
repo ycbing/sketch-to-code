@@ -1,5 +1,5 @@
 // app/api/generate/route.ts
-import { streamText } from "ai";
+import { streamText, generateText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
 // 创建智谱 AI 客户端
@@ -10,13 +10,11 @@ const zhipu = createOpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { image, requirements } = await req.json();
-
-    console.log('image type:', typeof image, 'image length:', image?.length);
-    console.log('requirements:', requirements);
+    const { messages } = await req.json();
+    const { parts } = messages[0];
 
     const result = await streamText({
-      model: zhipu("glm-4v-flash"), // 智谱 GLM-4V Flash 视觉模型（免费版）
+      model: zhipu.chat("glm-4v-flash"), // 智谱 GLM-4V Flash 视觉模型（免费版）
       messages: [
         {
           role: "system",
@@ -38,28 +36,30 @@ export async function POST(req: Request) {
         {
           role: "user",
           content: [
-            {
-              type: "image",
-              image: image,
-            },
+            // {
+            //   type: "file_url",
+            //   file_url: {
+            //     url: parts[0].url,
+            //   },
+            // },
             {
               type: "text",
-              text: requirements
-                ? `请根据这个草图生成 React 代码。额外要求：${requirements}`
+              text: parts[0].text
+                ? `请根据这个草图生成 React 代码。额外要求：${parts[0].text}`
                 : "请根据这个草图生成 React 代码，尽可能还原设计。",
             },
           ],
         },
       ],
-      maxOutputTokens: 4096,
+      // maxOutputTokens: 4096,
     });
 
-    return result.toTextStreamResponse();
+    return result.toUIMessageStreamResponse();
   } catch (error) {
-    console.error('API Error:', error);
+    console.error("API Error:", error);
     return new Response(JSON.stringify({ error: String(error) }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 }
