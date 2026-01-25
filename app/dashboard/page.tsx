@@ -26,7 +26,7 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this project?")) return;
+    if (!confirm("确定要删除这个项目吗？")) return;
 
     try {
       await deleteProject(id);
@@ -37,7 +37,7 @@ export default function DashboardPage() {
   };
 
   const handleCreateNew = async () => {
-    const name = prompt("Enter project name:");
+    const name = prompt("请输入项目名称：");
     if (!name) return;
 
     try {
@@ -66,7 +66,7 @@ export default function DashboardPage() {
                 <Sparkles className="w-4 h-4 text-white dark:text-black" />
               </div>
               <span className="font-semibold text-lg tracking-tight">
-                Sketch to Code
+                智能绘图
               </span>
             </div>
           </div>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              New Project
+              新建项目
             </button>
           </div>
         </div>
@@ -86,10 +86,10 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Your Projects
+            我的项目
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage and continue working on your sketches
+            管理并继续处理您的草图设计
           </p>
         </div>
 
@@ -103,17 +103,17 @@ export default function DashboardPage() {
               <Sparkles className="w-10 h-10 text-gray-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No projects yet
+              还没有项目
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Create your first project to start sketching
+              创建第一个项目开始绘图
             </p>
             <button
               onClick={handleCreateNew}
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Create Project
+              创建项目
             </button>
           </div>
         ) : (
@@ -153,7 +153,7 @@ export default function DashboardPage() {
                   href={`/editor/${project.id}`}
                   className="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white py-2 rounded-lg text-sm font-medium transition-colors"
                 >
-                  Open Editor
+                  打开编辑器
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

@@ -12,7 +12,7 @@ export default function LandingPage() {
               <Sparkles className="w-4 h-4 text-white dark:text-black" />
             </div>
             <span className="font-semibold text-lg tracking-tight">
-              Sketch to Code
+              智能绘图
             </span>
           </div>
           <nav className="flex items-center gap-6">
@@ -20,13 +20,13 @@ export default function LandingPage() {
               href="#features"
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
-              Features
+              功能特性
             </Link>
             <Link
               href="/dashboard"
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-2"
             >
-              Get Started
+              开始使用
               <ArrowRight className="w-4 h-4" />
             </Link>
           </nav>
@@ -38,31 +38,31 @@ export default function LandingPage() {
         <div className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm mb-6">
             <Zap className="w-4 h-4" />
-            <span>Powered by AI</span>
+            <span>AI 驱动</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 text-gray-900 dark:text-white">
-            Transform Sketches into{" "}
+            将草图转化为{" "}
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Production Code
+              生产级代码
             </span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
-            Draw your UI design and watch AI convert it into clean, production-ready
-            React components with Tailwind CSS. No more manual coding from scratch.
+            绘制您的 UI 设计，观看 AI 将其转换为整洁的、生产级的 React 组件和
+            Tailwind CSS 代码。告别从零开始的手动编码。
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link
               href="/dashboard"
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-all flex items-center gap-2 shadow-lg"
             >
-              Start Creating
+              立即创作
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="#features"
               className="px-8 py-3 rounded-lg font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
             >
-              Learn More
+              了解更多
             </Link>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function LandingPage() {
             <div className="aspect-video flex items-center justify-center">
               <div className="text-center text-gray-400 dark:text-gray-600">
                 <Code2 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Your sketch canvas will appear here</p>
+                <p>您的绘图区域将在此显示</p>
               </div>
             </div>
           </div>
@@ -90,10 +90,10 @@ export default function LandingPage() {
       <section id="features" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Everything you need to build faster
+            快速构建所需的一切
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Powerful features to streamline your design-to-code workflow
+            强大的功能，简化您的设计到代码工作流
           </p>
         </div>
 
@@ -103,11 +103,10 @@ export default function LandingPage() {
               <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              AI-Powered Generation
+              AI 智能生成
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Advanced AI models analyze your sketches and generate clean, production-ready
-              React components instantly.
+              先进的 AI 模型分析您的草图，即时生成整洁、生产级的 React 组件。
             </p>
           </div>
 
@@ -116,11 +115,10 @@ export default function LandingPage() {
               <Code2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Live Preview
+              实时预览
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              See your code come to life with real-time preview. Make iterations and
-              watch changes instantly.
+              通过实时预览让代码生动呈现。进行迭代，即时查看变化。
             </p>
           </div>
 
@@ -129,11 +127,10 @@ export default function LandingPage() {
               <Zap className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Export & Deploy
+              导出部署
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Export your code instantly or deploy directly to production. Full
-              version history included.
+              即时导出代码或直接部署到生产环境。包含完整的版本历史记录。
             </p>
           </div>
         </div>
@@ -143,17 +140,16 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-6 py-24">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to build faster?
+            准备好加速构建了吗？
           </h2>
           <p className="text-lg text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of developers who are already using AI to accelerate their
-            workflow.
+            加入数千名开发者的行列，他们已经在使用 AI 加速工作流程。
           </p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-all"
           >
-            Get Started Free
+            免费开始
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -162,7 +158,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 dark:border-gray-800 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Built with Next.js and Vercel AI SDK</p>
+          <p>基于 Next.js 和 Vercel AI SDK 构建</p>
         </div>
       </footer>
     </div>

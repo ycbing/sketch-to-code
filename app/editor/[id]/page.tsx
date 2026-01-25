@@ -218,7 +218,7 @@ export default function EditorPage() {
     try {
       const shapeIds = editor.getCurrentPageShapeIds();
       if (shapeIds.size === 0) {
-        setError("Please draw something on the canvas first");
+        setError("请先在画布上绘制内容");
         return null;
       }
 
@@ -231,13 +231,13 @@ export default function EditorPage() {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = () => {
-          setError("Failed to process canvas image");
+          setError("处理画布图片失败");
           resolve(null as any);
         };
         reader.readAsDataURL(imageRes.blob);
       });
     } catch (err) {
-      setError("Failed to capture canvas. Please try again.");
+      setError("捕获画布失败，请重试。");
       console.error(err);
       return null;
     }
@@ -249,7 +249,7 @@ export default function EditorPage() {
 
     if (!image) {
       if (!error) {
-        setError("Please draw something on the canvas first");
+        setError("请先在画布上绘制内容");
       }
       return;
     }
@@ -259,7 +259,7 @@ export default function EditorPage() {
       parts: [
         {
           type: "text",
-          text: "Create a React component based on this wireframe. Use Tailwind CSS.",
+          text: "基于这个线框图创建一个 React 组件。使用 Tailwind CSS。",
         },
         {
           type: "file",
@@ -280,7 +280,7 @@ export default function EditorPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      setError("Failed to copy code");
+      setError("复制代码失败");
     }
   }, [generatedCode]);
 
@@ -387,7 +387,7 @@ export default function EditorPage() {
             </div>
             <div>
               <span className="font-semibold text-lg tracking-tight">
-                {projectName || "Loading..."}
+                {projectName || "加载中..."}
               </span>
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function EditorPage() {
             }`}
           >
             <Keyboard className="w-3 h-3" />
-            Shortcuts
+            快捷键
           </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
@@ -411,10 +411,10 @@ export default function EditorPage() {
                 ? "text-gray-400 hover:text-white"
                 : "text-gray-600 hover:text-gray-900"
             }`}
-            title="View code history"
+            title="查看代码历史"
           >
             <History className="w-3 h-3" />
-            History ({codeHistory.length})
+            历史 ({codeHistory.length})
           </button>
           <button
             onClick={toggleTheme}
@@ -423,7 +423,7 @@ export default function EditorPage() {
                 ? "bg-white/10 hover:bg-white/20 text-white"
                 : "bg-gray-200 hover:bg-gray-300 text-gray-700"
             }`}
-            title={`Switch to ${isDark ? "light" : "dark"} mode`}
+            title={`切换到${isDark ? "浅色" : "深色"}模式`}
           >
             {isDark ? (
               <Sun className="w-4 h-4" />
@@ -437,7 +437,7 @@ export default function EditorPage() {
             }`}
           >
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="hidden sm:inline">Auto-saving</span>
+            <span className="hidden sm:inline">自动保存</span>
           </div>
         </div>
       </header>
@@ -477,7 +477,7 @@ export default function EditorPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
+              <h3 className="text-lg font-semibold">键盘快捷键</h3>
               <button
                 onClick={() => setShowKeyboardShortcuts(false)}
                 className={`transition-colors ${
@@ -492,7 +492,7 @@ export default function EditorPage() {
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className={isDark ? "text-gray-400" : "text-gray-600"}>
-                  Generate code
+                  生成代码
                 </span>
                 <kbd
                   className={`px-2 py-1 rounded text-xs ${
@@ -504,7 +504,7 @@ export default function EditorPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className={isDark ? "text-gray-400" : "text-gray-600"}>
-                  Save version
+                  保存版本
                 </span>
                 <kbd
                   className={`px-2 py-1 rounded text-xs ${
@@ -516,7 +516,7 @@ export default function EditorPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className={isDark ? "text-gray-400" : "text-gray-600"}>
-                  Show shortcuts
+                  显示快捷键
                 </span>
                 <kbd
                   className={`px-2 py-1 rounded text-xs ${
@@ -528,7 +528,7 @@ export default function EditorPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className={isDark ? "text-gray-400" : "text-gray-600"}>
-                  Close dialog
+                  关闭对话框
                 </span>
                 <kbd
                   className={`px-2 py-1 rounded text-xs ${
@@ -540,7 +540,7 @@ export default function EditorPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className={isDark ? "text-gray-400" : "text-gray-600"}>
-                  Send message
+                  发送消息
                 </span>
                 <kbd
                   className={`px-2 py-1 rounded text-xs ${
@@ -598,12 +598,12 @@ export default function EditorPage() {
                     {status === "streaming" ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Generating...
+                        生成中...
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-5 h-5" />
-                        {generatedCode ? "Regenerate" : "Generate Code"}
+                        {generatedCode ? "重新生成" : "生成代码"}
                       </>
                     )}
                   </button>
@@ -614,7 +614,7 @@ export default function EditorPage() {
                         ? "border-white/20 hover:bg-white/10 hover:border-white/30"
                         : "border-gray-300 hover:bg-gray-100 hover:border-gray-400"
                     }`}
-                    title="Undo Drawing"
+                    title="撤销绘图"
                   >
                     <Undo2 className="w-5 h-5" />
                   </button>
@@ -624,7 +624,7 @@ export default function EditorPage() {
                     isDark ? "text-gray-500" : "text-gray-400"
                   }`}
                 >
-                  Draw → Generate → Auto-save
+                  绘制 → 生成 → 自动保存
                 </div>
               </div>
             </div>
@@ -670,7 +670,7 @@ export default function EditorPage() {
                   isDark ? "text-gray-500" : "text-gray-400"
                 }`}
               >
-                {generatedCode.split("\n").length} lines •{" "}
+                {generatedCode.split("\n").length} 行 •{" "}
                 {(generatedCode.length / 1024).toFixed(1)} KB
               </div>
               <div className="flex items-center gap-2">
@@ -687,7 +687,7 @@ export default function EditorPage() {
                   ) : (
                     <Copy className="w-3 h-3" />
                   )}
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? "已复制！" : "复制"}
                 </button>
                 <button
                   onClick={handleDownloadCode}
@@ -698,7 +698,7 @@ export default function EditorPage() {
                   }`}
                 >
                   <Download className="w-3 h-3" />
-                  Download
+                  下载
                 </button>
               </div>
             </div>
@@ -727,7 +727,7 @@ export default function EditorPage() {
               {activeTab === "preview" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"></div>
               )}
-              <Eye className="w-4 h-4" /> Preview
+              <Eye className="w-4 h-4" /> 预览
             </button>
             <button
               onClick={() => setActiveTab("code")}
@@ -744,7 +744,7 @@ export default function EditorPage() {
               {activeTab === "code" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"></div>
               )}
-              <Code2 className="w-4 h-4" /> Code
+              <Code2 className="w-4 h-4" /> 代码
             </button>
           </div>
 
@@ -797,7 +797,7 @@ export default function EditorPage() {
                       <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Refine the design... (e.g., 'Make it dark mode', 'Add animations')"
+                        placeholder="优化设计...（例如：'改成深色模式'，'添加动画'）"
                         className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
                           isDark
                             ? "bg-white/5 border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600"
@@ -835,9 +835,9 @@ export default function EditorPage() {
                       isDark ? "text-gray-600" : "text-gray-400"
                     }`}
                   >
-                    <span>Press Enter to send</span>
+                    <span>按 Enter 发送</span>
                     <span>•</span>
-                    <span>⌘/Ctrl + K for shortcuts</span>
+                    <span>⌘/Ctrl + K 查看快捷键</span>
                   </div>
                 </form>
               </div>
@@ -869,15 +869,14 @@ export default function EditorPage() {
                     isDark ? "text-white" : "text-gray-900"
                   }`}
                 >
-                  Transform Ideas into Code
+                  将想法转化为代码
                 </h3>
                 <p
                   className={`max-w-md text-sm leading-relaxed ${
                     isDark ? "text-gray-500" : "text-gray-600"
                   }`}
                 >
-                  Draw your UI design on the canvas and watch it come to life with
-                  AI-powered code generation.
+                  在画布上绘制 UI 设计，观看 AI 代码生成技术让它变为现实。
                 </p>
                 <div
                   className={`mt-8 flex items-center gap-4 text-xs font-mono ${
@@ -896,7 +895,7 @@ export default function EditorPage() {
                         1
                       </span>
                     </div>
-                    <span>Draw Design</span>
+                    <span>绘制设计</span>
                   </div>
                   <ArrowRight className="w-4 h-4" />
                   <div className="flex items-center gap-2">
@@ -911,7 +910,7 @@ export default function EditorPage() {
                         2
                       </span>
                     </div>
-                    <span>Generate Code</span>
+                    <span>生成代码</span>
                   </div>
                   <ArrowRight className="w-4 h-4" />
                   <div className="flex items-center gap-2">
@@ -926,7 +925,7 @@ export default function EditorPage() {
                         3
                       </span>
                     </div>
-                    <span>Auto-save</span>
+                    <span>自动保存</span>
                   </div>
                 </div>
               </div>
@@ -949,7 +948,7 @@ export default function EditorPage() {
               isDark ? "border-white/10" : "border-gray-200"
             }`}
           >
-            <h3 className="font-semibold">Code History</h3>
+            <h3 className="font-semibold">代码历史</h3>
             <button
               onClick={() => setShowHistory(false)}
               className={`transition-colors ${
@@ -968,7 +967,7 @@ export default function EditorPage() {
                   isDark ? "text-gray-600" : "text-gray-400"
                 }`}
               >
-                No history yet
+                暂无历史记录
               </p>
             ) : (
               codeHistory.map((version, index) => (
@@ -991,7 +990,7 @@ export default function EditorPage() {
                         isDark ? "text-gray-400" : "text-gray-600"
                       }`}
                     >
-                      Version {codeHistory.length - index}
+                      版本 {codeHistory.length - index}
                     </span>
                     <span
                       className={`text-[10px] font-mono ${
@@ -1009,7 +1008,7 @@ export default function EditorPage() {
                       isDark ? "text-gray-600" : "text-gray-400"
                     }`}
                   >
-                    {version.code.split("\n").length} lines
+                    {version.code.split("\n").length} 行
                   </div>
                 </button>
               ))
