@@ -115,9 +115,32 @@ export default function EditorPage() {
   }, [projectId, router]);
 
   // --- Vercel AI SDK ---
+  // 从 localStorage 加载 AI 配置
+  const getAIConfig = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    const savedConfig = localStorage.getItem("ai-model-config");
+    if (savedConfig) {
+      try {
+        return JSON.parse(savedConfig);
+      } catch (err) {
+        console.error("Failed to parse AI config:", err);
+      }
+    }
+    return null;
+  }, []);
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/generate",
+      headers: () => {
+        const config = getAIConfig();
+        if (config) {
+          return {
+            "x-ai-config": JSON.stringify(config),
+          } as Record<string, string>;
+        }
+        return {} as Record<string, string>;
+      },
     }),
   });
 
