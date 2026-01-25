@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Clock, Sparkles, ArrowRight, Home } from "lucide-react";
+import { Plus, Trash2, Clock, Sparkles, ArrowRight, Home, X, Loader2 } from "lucide-react";
 import { getAllProjects, deleteProject } from "@/lib/db";
 import type { Project } from "@/lib/types";
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -26,27 +31,46 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("确定要删除这个项目吗？")) return;
+    setShowDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!showDeleteConfirm) return;
 
     try {
-      await deleteProject(id);
-      setProjects((prev) => prev.filter((p) => p.id !== id));
+      await deleteProject(showDeleteConfirm);
+      setProjects((prev) => prev.filter((p) => p.id !== showDeleteConfirm));
+      setShowDeleteConfirm(null);
     } catch (error) {
       console.error("Failed to delete project:", error);
     }
   };
 
-  const handleCreateNew = async () => {
-    const name = prompt("请输入项目名称：");
-    if (!name) return;
+  const handleCreateNew = useCallback(async () => {
+    if (!projectName.trim()) return;
 
+    setIsCreating(true);
     try {
       const { createProject } = await import("@/lib/db");
-      const newProject = await createProject(name);
+      const newProject = await createProject(
+        projectName.trim(),
+        projectDescription.trim() || undefined
+      );
       setProjects((prev) => [newProject, ...prev]);
+      setProjectName("");
+      setProjectDescription("");
+      setShowCreateModal(false);
     } catch (error) {
       console.error("Failed to create project:", error);
+    } finally {
+      setIsCreating(false);
     }
+  }, [projectName, projectDescription]);
+
+  const handleOpenCreateModal = () => {
+    setProjectName("");
+    setProjectDescription("");
+    setShowCreateModal(true);
   };
 
   return (
@@ -72,7 +96,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={handleCreateNew}
+              onClick={handleOpenCreateModal}
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -109,7 +133,7 @@ export default function DashboardPage() {
               创建第一个项目开始绘图
             </p>
             <button
-              onClick={handleCreateNew}
+              onClick={handleOpenCreateModal}
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -161,6 +185,130 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Create Project Modal */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50 animate-in fade-in duration-200"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                新建项目
+              </h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  项目名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="例如：登录页面设计"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && projectName.trim()) {
+                      handleCreateNew();
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  项目描述 <span className="text-gray-400">(可选)</span>
+                </label>
+                <textarea
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="简要描述这个项目的用途..."
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleCreateNew}
+                  disabled={!projectName.trim() || isCreating}
+                  className="flex-1 px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      创建中...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      创建项目
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50 animate-in fade-in duration-200"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                确认删除项目
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                此操作将永久删除该项目及其所有历史记录，无法恢复。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
