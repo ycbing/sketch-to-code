@@ -40,6 +40,12 @@ export async function POST(req: Request) {
         apiKey: config.apiKey,
       });
       model = anthropic.chat(config.model);
+    } else if (config.provider === "siliconflow") {
+      const siliconflow = createOpenAI({
+        baseURL: config.baseURL,
+        apiKey: config.apiKey,
+      });
+      model = siliconflow.chat(config.model);
     } else {
       // 默认使用智谱 AI
       const zhipu = createOpenAI({

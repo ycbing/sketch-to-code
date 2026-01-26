@@ -8,12 +8,6 @@ export async function POST(req: Request) {
     let response: Response;
 
     if (config.provider === "openai") {
-      const { createOpenAI } = await import("@ai-sdk/openai");
-      const openai = createOpenAI({
-        baseURL: config.baseURL,
-        apiKey: config.apiKey,
-      });
-
       // 测试请求
       response = await fetch(`${config.baseURL}/chat/completions`, {
         method: "POST",
@@ -54,6 +48,19 @@ export async function POST(req: Request) {
           max_tokens: 10,
         }),
       });
+    } else if (config.provider === "siliconflow") {
+      response = await fetch(`${config.baseURL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{ role: "user", content: "test" }],
+          max_tokens: 10,
+        }),
+      });
     } else {
       return NextResponse.json({ success: false, error: "不支持的提供商" }, { status: 400 });
     }
@@ -61,7 +68,7 @@ export async function POST(req: Request) {
     if (response.ok) {
       return NextResponse.json({ success: true });
     } else {
-      const error = await response.text();
+      await response.text();
       return NextResponse.json({ success: false, error: "API Key 无效" }, { status: 400 });
     }
   } catch (error) {

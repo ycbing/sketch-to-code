@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server } from "lucide-react";
 
 interface AIModelConfig {
-  provider: "openai" | "anthropic" | "zhipu";
+  provider: "openai" | "anthropic" | "zhipu" | "siliconflow";
   apiKey: string;
   baseURL?: string;
   model: string;
@@ -26,6 +26,11 @@ const DEFAULT_CONFIGS: Record<string, Omit<AIModelConfig, "apiKey">> = {
     provider: "zhipu",
     baseURL: "https://open.bigmodel.cn/api/paas/v4",
     model: "glm-4v-flash",
+  },
+  siliconflow: {
+    provider: "siliconflow",
+    baseURL: "https://api.siliconflow.cn/v1",
+    model: "deepseek-ai/DeepSeek-V3",
   },
 };
 
@@ -52,7 +57,7 @@ export default function SettingsPage() {
     }
   }, []);
 
-  const handleProviderChange = (provider: "openai" | "anthropic" | "zhipu") => {
+  const handleProviderChange = (provider: "openai" | "anthropic" | "zhipu" | "siliconflow") => {
     const defaultConfig = DEFAULT_CONFIGS[provider];
     setConfig({
       provider,
@@ -149,11 +154,12 @@ export default function SettingsPage() {
             <Sparkles className="w-5 h-5" />
             选择提供商
           </h2>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             {[
               { id: "zhipu", name: "智谱 AI", desc: "GLM-4V 视觉模型" },
               { id: "openai", name: "OpenAI", desc: "GPT-4V 多模态" },
               { id: "anthropic", name: "Anthropic", desc: "Claude 3.5 Sonnet" },
+              { id: "siliconflow", name: "硅基流动", desc: "DeepSeek 等多模型" },
             ].map((provider) => (
               <button
                 key={provider.id}
@@ -291,6 +297,18 @@ export default function SettingsPage() {
             </p>
             <p>
               <strong>Anthropic:</strong> 需要 Claude API Key，支持 Claude 3.5 Sonnet
+            </p>
+            <p>
+              <strong>硅基流动:</strong> 访问{" "}
+              <a
+                href="https://cloud.siliconflow.cn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:no-underline"
+              >
+                cloud.siliconflow.cn
+              </a>{" "}
+              获取 API Key，支持 DeepSeek、Qwen 等多种模型
             </p>
           </div>
         </div>
