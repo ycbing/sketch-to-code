@@ -38,14 +38,9 @@ const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), {
   ),
 });
 
-const Sandpack = dynamic(
-  () => import("@codesandbox/sandpack-react").then((mod) => mod.Sandpack),
-  {
-    ssr: false,
-  },
-);
-
 import "tldraw/tldraw.css";
+import { PreviewMode } from "@/components/editor/PreviewMode";
+import { CodeMode } from "@/components/editor/CodeMode";
 
 type TabType = "preview" | "code";
 type Theme = "light" | "dark";
@@ -776,34 +771,11 @@ export default function EditorPage() {
             {generatedCode ? (
               <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-auto">
-                  <Sandpack
-                    key={activeTab}
-                    template="react"
-                    theme={isDark ? "dark" : "light"}
-                    files={{
-                      "/App.js": generatedCode,
-                    }}
-                    options={{
-                      externalResources: ["https://cdn.tailwindcss.com"],
-                      showNavigator: false,
-                      showTabs: false,
-                      editorHeight: "100%",
-                      showLineNumbers: true,
-                      classes: {
-                        "sp-wrapper": "h-full",
-                        "sp-layout": "h-full",
-                        "sp-preview":
-                          activeTab === "preview" ? "h-full flex" : "hidden",
-                        "sp-editor":
-                          activeTab === "code" ? "h-full flex" : "hidden",
-                      },
-                    }}
-                    customSetup={{
-                      dependencies: {
-                        "lucide-react": "latest",
-                      },
-                    }}
-                  />
+                  {activeTab === "preview" ? (
+                    <PreviewMode code={generatedCode} isDark={isDark} />
+                  ) : (
+                    <CodeMode code={generatedCode} isDark={isDark} />
+                  )}
                 </div>
 
                 {/* Refinement Chat Input */}
