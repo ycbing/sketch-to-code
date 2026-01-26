@@ -78,20 +78,20 @@ export async function POST(req: Request) {
         {
           role: "user",
           content: [
+            ...(parts[parts.length - 1].url
+              ? [
+                  {
+                    type: "image" as const,
+                    image: parts[parts.length - 1].url,
+                  },
+                ]
+              : []),
             {
               type: "text",
               text: parts[0].text
                 ? `请根据这个草图生成 React 代码。额外要求：${parts[0].text}`
                 : "请根据这个草图生成 React 代码，尽可能还原设计。",
             },
-            ...(parts[0].url
-              ? [
-                  {
-                    type: "image" as const,
-                    image: parts[0].url,
-                  },
-                ]
-              : []),
           ],
         },
       ],
