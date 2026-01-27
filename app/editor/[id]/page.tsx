@@ -150,7 +150,37 @@ export default function EditorPage() {
     try {
       const lastPart = lastMessage.parts[lastMessage.parts.length - 1];
       if (lastPart?.type === "text") {
-        return lastPart.text.replace(/```jsx|```/g, "").trim();
+        const text = lastPart.text;
+
+        // 使用正则表达式提取代码块内容
+        // 匹配 ```tsx 或 ```jsx 或 ```javascript 或 ```js 后的代码内容
+        const codeBlockRegex = /```(?:tsx|jsx|javascript|js)?\n([\s\S]*?)```/g;
+        const matches = Array.from(text.matchAll(codeBlockRegex));
+
+        if (matches.length > 0) {
+          // 提取第一个代码块的内容
+          return matches[0][1].trim();
+        }
+
+        // 如果没有找到代码块标记，尝试移除可能的描述文字
+        // 匹配以 import 或 function 或 const 开头的代码
+        const codeStartRegex = /(?:^|\n)(import|function|const|export|class|interface|type)\s/m;
+        const match = text.match(codeStartRegex);
+
+        if (match) {
+          // 从代码开始位置截取到末尾
+          const codeStart = match.index;
+          let code = text.slice(codeStart);
+
+          // 移除末尾的非代码内容（描述性文字）
+          // 通常描述在代码后会空行，然后是中文或英文描述
+          code = code.replace(/\n\n[^\n]*?(这段|上面|以下|这是|The above|This|The following).*?(代码|code|组件|component|函数|function).*$/gmi, "");
+          code = code.replace(/\n\n[^\n]*?(定义了|defines?|contains?|is).*?$/gmi, "");
+
+          return code.trim();
+        }
+
+        return text.trim();
       }
     } catch (err) {
       console.error("Failed to parse generated code:", err);
