@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
@@ -25,6 +25,8 @@ import {
   Moon,
   Sun,
   Home,
+  Upload,
+  ImagePlus,
 } from "lucide-react";
 import { getDB, createVersion } from "@/lib/db";
 
@@ -66,6 +68,9 @@ export default function EditorPage() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const [projectName, setProjectName] = useState<string>("");
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 从 localStorage 加载主题偏好
   useEffect(() => {
@@ -291,34 +296,117 @@ export default function EditorPage() {
     }
   }, [editor]);
 
+  // --- Image Upload Handling ---
+  const processFile = useCallback((file: File) => {
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/)) {
+      setError("不支持的图片格式，请使用 PNG、JPG 或 WebP");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setError("图片大小不能超过 20MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedImage(reader.result as string);
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError("读取图片失败，请重试");
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) processFile(file);
+      // Reset so re-selecting the same file works
+      e.target.value = "";
+    },
+    [processFile],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    },
+    [processFile],
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only unset if leaving the drop zone (not entering a child)
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const removeUploadedImage = useCallback(() => {
+    setUploadedImage(null);
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     setError(null);
-    const image = await getCanvasImage();
+
+    // Priority: uploaded image > canvas screenshot
+    let image: string | null = uploadedImage;
+    let source = uploadedImage ? "uploaded" : "canvas";
+
+    if (!image) {
+      image = await getCanvasImage();
+    }
 
     if (!image) {
       if (!error) {
-        setError("请先在画布上绘制内容");
+        setError("请先在画布上绘制内容或上传设计稿截图");
       }
       return;
     }
+
+    const promptText =
+      source === "uploaded"
+        ? "基于这张设计稿截图创建一个 React 组件。使用 Tailwind CSS。尽量还原设计稿的布局、颜色、字体和间距。"
+        : "基于这个线框图创建一个 React 组件。使用 Tailwind CSS。";
+
+    // Determine media type from data URL
+    let mediaType = "image/png";
+    if (image.startsWith("data:image/jpeg")) mediaType = "image/jpeg";
+    else if (image.startsWith("data:image/webp")) mediaType = "image/webp";
 
     await sendMessage({
       role: "user",
       parts: [
         {
           type: "text",
-          text: "基于这个线框图创建一个 React 组件。使用 Tailwind CSS。",
+          text: promptText,
         },
         {
           type: "file",
-          mediaType: "image/png",
+          mediaType,
           url: image,
         },
       ],
     });
 
     setActiveTab("preview");
-  }, [getCanvasImage, sendMessage, error]);
+  }, [uploadedImage, getCanvasImage, sendMessage, error]);
 
   const handleCopyCode = useCallback(async () => {
     if (!generatedCode) return;
@@ -346,7 +434,7 @@ export default function EditorPage() {
     URL.revokeObjectURL(url);
   }, [generatedCode]);
 
-  // 快捷键支持
+  // 快捷键支持 + 粘贴图片
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + Enter: 生成代码
@@ -373,9 +461,27 @@ export default function EditorPage() {
       }
     };
 
+    // Paste handler for images
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          e.preventDefault();
+          const file = items[i].getAsFile();
+          if (file) processFile(file);
+          return;
+        }
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleGenerate, saveVersionToDatabase, generatedCode]);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [handleGenerate, saveVersionToDatabase, generatedCode, processFile]);
 
   // 主题相关的类名
   const isDark = theme === "dark";
@@ -598,6 +704,18 @@ export default function EditorPage() {
                   Enter
                 </kbd>
               </div>
+              <div className="flex items-center justify-between">
+                <span className={isDark ? "text-gray-400" : "text-gray-600"}>
+                  粘贴上传截图
+                </span>
+                <kbd
+                  className={`px-2 py-1 rounded text-xs ${
+                    isDark ? "bg-white/10" : "bg-gray-200"
+                  }`}
+                >
+                  Ctrl + V
+                </kbd>
+              </div>
             </div>
           </div>
         </div>
@@ -623,6 +741,85 @@ export default function EditorPage() {
               hideUi={false}
             />
 
+            {/* Image Upload Drop Zone - overlay on canvas */}
+            <div
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className="absolute inset-0 z-[1500] pointer-events-none"
+            >
+              {/* Drag overlay */}
+              {isDragging && (
+                <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
+                  <div
+                    className={`absolute inset-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-colors ${
+                      isDark
+                        ? "bg-black/60 border-blue-400"
+                        : "bg-white/80 border-blue-500"
+                    }`}
+                  >
+                    <Upload className="w-10 h-10 text-blue-400" />
+                    <span
+                      className={`text-sm font-medium ${
+                        isDark ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      释放以上传设计稿
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload thumbnail indicator */}
+              {uploadedImage && (
+                <div className="absolute top-3 left-3 pointer-events-auto z-[1600]">
+                  <div
+                    className={`group relative rounded-lg overflow-hidden border shadow-lg transition-all ${
+                      isDark
+                        ? "border-white/20 bg-black/80"
+                        : "border-gray-200 bg-white shadow-gray-200"
+                    }`}
+                  >
+                    <img
+                      src={uploadedImage}
+                      alt="上传的设计稿"
+                      className="w-20 h-20 object-cover"
+                    />
+                    <button
+                      onClick={removeUploadedImage}
+                      className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md ${
+                        isDark
+                          ? "bg-gray-800 hover:bg-red-500 text-white"
+                          : "bg-white hover:bg-red-500 text-gray-700 hover:text-white border border-gray-200"
+                      }`}
+                      title="移除图片"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div
+                      className={`absolute bottom-0 left-0 right-0 text-[9px] text-center py-0.5 ${
+                        isDark
+                          ? "bg-black/70 text-gray-300"
+                          : "bg-white/80 text-gray-600"
+                      }`}
+                    >
+                      设计稿
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleFileInput}
+              className="hidden"
+            />
+
             {/* Floating control */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
               <div
@@ -632,7 +829,62 @@ export default function EditorPage() {
                     : "bg-white/95 border-gray-200 shadow-gray-300/50"
                 }`}
               >
+                {/* Upload preview strip (when image is uploaded, show inline) */}
+                {uploadedImage && (
+                  <div className="mb-3 flex items-center gap-3 p-2 rounded-lg border border-dashed transition-colors">
+                    <img
+                      src={uploadedImage}
+                      alt="设计稿预览"
+                      className="w-12 h-12 rounded object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-xs font-medium truncate ${
+                          isDark ? "text-gray-200" : "text-gray-800"
+                        }`}
+                      >
+                        已上传设计稿
+                      </p>
+                      <p
+                        className={`text-[10px] ${
+                          isDark ? "text-gray-500" : "text-gray-400"
+                        }`}
+                      >
+                        点击生成将使用此图片
+                      </p>
+                    </div>
+                    <button
+                      onClick={removeUploadedImage}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isDark
+                          ? "hover:bg-white/10 text-gray-400 hover:text-white"
+                          : "hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                      }`}
+                      title="移除"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
+                  {/* Upload button */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`w-12 h-12 flex items-center justify-center border rounded-xl transition-all flex-shrink-0 ${
+                      uploadedImage
+                        ? "border-green-500/50 bg-green-500/10"
+                        : isDark
+                          ? "border-white/20 hover:bg-white/10 hover:border-white/30"
+                          : "border-gray-300 hover:bg-gray-100 hover:border-gray-400"
+                    }`}
+                    title="上传设计稿截图（支持 PNG / JPG / WebP，或 Ctrl+V 粘贴）"
+                  >
+                    {uploadedImage ? (
+                      <Check className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <ImagePlus className="w-5 h-5" />
+                    )}
+                  </button>
                   <button
                     onClick={handleGenerate}
                     disabled={status === "streaming"}
@@ -672,7 +924,7 @@ export default function EditorPage() {
                     isDark ? "text-gray-500" : "text-gray-400"
                   }`}
                 >
-                  绘制 → 生成 → 自动保存
+                  绘制或上传 → 生成 → 自动保存
                 </div>
               </div>
             </div>
@@ -817,12 +1069,38 @@ export default function EditorPage() {
                       : "bg-gray-50 border-gray-200"
                   }`}
                 >
+                  {/* Quick suggestion chips */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {["改成深色模式", "增加圆角和阴影", "改成响应式布局", "添加动画效果"].map(
+                      (suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          disabled={status === "streaming"}
+                          onClick={() => {
+                            setInput(suggestion);
+                            // Auto-send the suggestion
+                            setError(null);
+                            sendMessage({ text: suggestion });
+                            setInput("");
+                          }}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isDark
+                              ? "border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20"
+                              : "border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {suggestion}
+                        </button>
+                      ),
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
                       <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="优化设计...（例如：'改成深色模式'，'添加动画'）"
+                        placeholder="描述你想要的修改（如：把标题改成红色、添加阴影效果）"
                         className={`w-full border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
                           isDark
                             ? "bg-white/5 border-white/10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600"
@@ -861,6 +1139,8 @@ export default function EditorPage() {
                     }`}
                   >
                     <span>按 Enter 发送</span>
+                    <span>•</span>
+                    <span>点击上方标签快速修改</span>
                     <span>•</span>
                     <span>⌘/Ctrl + K 查看快捷键</span>
                   </div>
@@ -901,7 +1181,7 @@ export default function EditorPage() {
                     isDark ? "text-gray-500" : "text-gray-600"
                   }`}
                 >
-                  在画布上绘制 UI 设计，观看 AI 代码生成技术让它变为现实。
+                  在画布上绘制 UI 设计，或上传设计稿截图，观看 AI 代码生成技术让它变为现实。
                 </p>
                 <div
                   className={`mt-8 flex items-center gap-4 text-xs font-mono ${
@@ -920,7 +1200,7 @@ export default function EditorPage() {
                         1
                       </span>
                     </div>
-                    <span>绘制设计</span>
+                    <span>绘制或上传</span>
                   </div>
                   <ArrowRight className="w-4 h-4" />
                   <div className="flex items-center gap-2">
