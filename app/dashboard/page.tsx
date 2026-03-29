@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Trash2, Clock, Sparkles, ArrowRight, Home, X, Loader2, Settings } from "lucide-react";
-import { getAllProjects, deleteProject } from "@/lib/db";
+import { Plus, Trash2, Clock, Sparkles, ArrowRight, Home, X, Loader2, Settings, LayoutTemplate } from "lucide-react";
+import { getAllProjects, deleteProject, createProject } from "@/lib/db";
 import type { Project } from "@/lib/types";
+import { TEMPLATES, TEMPLATE_CATEGORIES, type CategoryConfig } from "@/lib/templates";
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -14,6 +15,8 @@ export default function DashboardPage() {
   const [projectDescription, setProjectDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [isCreatingFromTemplate, setIsCreatingFromTemplate] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -73,6 +76,26 @@ export default function DashboardPage() {
     setShowCreateModal(true);
   };
 
+  const filteredTemplates =
+    activeCategory === "all"
+      ? TEMPLATES
+      : TEMPLATES.filter((t) => t.category === activeCategory);
+
+  const handleUseTemplate = useCallback(async (templateId: string) => {
+    const template = TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    setIsCreatingFromTemplate(true);
+    try {
+      const newProject = await createProject(template.name, template.description);
+      // Navigate to editor with template param
+      window.location.href = `/editor/${newProject.id}?template=${encodeURIComponent(templateId)}`;
+    } catch (error) {
+      console.error("Failed to create project from template:", error);
+      setIsCreatingFromTemplate(false);
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
       {/* Header */}
@@ -115,6 +138,94 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Template Section */}
+        <section className="mb-16">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-lg flex items-center justify-center">
+              <LayoutTemplate className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              从模板开始
+            </h2>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 ml-11">
+            选择预设模板，一键生成专业页面设计
+          </p>
+
+          {/* Category Tabs */}
+          <div className="flex flex-wrap gap-2 mb-8">
+            {TEMPLATE_CATEGORIES.map((cat: CategoryConfig) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeCategory === cat.id
+                    ? "bg-gray-900 dark:bg-white text-white dark:text-black shadow-sm"
+                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:text-gray-900 dark:hover:text-white"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Template Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
+              >
+                {/* Gradient header with emoji */}
+                <div
+                  className={`relative h-32 bg-gradient-to-br ${template.gradient} flex items-center justify-center`}
+                >
+                  <span className="text-5xl drop-shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    {template.emoji}
+                  </span>
+                  {/* Decorative circles */}
+                  <div className="absolute top-2 right-2 w-8 h-8 bg-white/10 rounded-full" />
+                  <div className="absolute bottom-3 left-3 w-5 h-5 bg-white/10 rounded-full" />
+                </div>
+
+                {/* Info */}
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
+                    {template.name}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">
+                    {template.description}
+                  </p>
+                  <button
+                    onClick={() => handleUseTemplate(template.id)}
+                    disabled={isCreatingFromTemplate}
+                    className="w-full py-2 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  >
+                    {isCreatingFromTemplate ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        创建中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        使用
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+          <span className="text-sm text-gray-400 dark:text-gray-500">我的项目</span>
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+        </div>
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             我的项目

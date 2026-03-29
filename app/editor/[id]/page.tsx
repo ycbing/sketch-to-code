@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation";
 import { DefaultChatTransport } from "ai";
 import { useChat } from "@ai-sdk/react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Panel, Group, Separator } from "react-resizable-panels";
 import type { Editor as TldrawEditor } from "tldraw";
@@ -29,6 +30,7 @@ import {
   ImagePlus,
 } from "lucide-react";
 import { getDB, createVersion } from "@/lib/db";
+import { parseGeneratedFiles } from "@/lib/parse-files";
 
 // 动态导入重型组件，优化初始加载
 const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), {
@@ -56,6 +58,7 @@ interface CodeVersion {
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const projectId = params.id as string;
 
   const [input, setInput] = useState("");
@@ -70,6 +73,7 @@ export default function EditorPage() {
   const [projectName, setProjectName] = useState<string>("");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isGeneratingFromTemplate, setIsGeneratingFromTemplate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 从 localStorage 加载主题偏好
@@ -144,6 +148,36 @@ export default function EditorPage() {
     }),
   });
 
+  // 模板自动生成：页面加载时检查 URL query param
+  const templateAutoTriggered = useRef(false);
+  useEffect(() => {
+    const templateId = searchParams.get("template");
+    if (!templateId || templateAutoTriggered.current) return;
+    templateAutoTriggered.current = true;
+
+    // Defer to ensure chat transport is ready
+    const timer = setTimeout(async () => {
+      try {
+        const { getTemplateById } = await import("@/lib/templates");
+        const template = getTemplateById(templateId);
+        if (!template) return;
+
+        setIsGeneratingFromTemplate(true);
+        // Small delay to ensure chat transport is ready
+        await new Promise((r) => setTimeout(r, 300));
+        await sendMessage({ text: template.initialPrompt });
+        // Clean up URL
+        window.history.replaceState({}, "", `/editor/${projectId}`);
+        setIsGeneratingFromTemplate(false);
+      } catch (err) {
+        console.error("Failed to generate from template:", err);
+        setIsGeneratingFromTemplate(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, projectId, sendMessage]);
+
   // 使用 useMemo 缓存计算结果
   const lastMessage = useMemo(() => {
     return messages[messages.length - 1];
@@ -156,36 +190,10 @@ export default function EditorPage() {
       const lastPart = lastMessage.parts[lastMessage.parts.length - 1];
       if (lastPart?.type === "text") {
         const text = lastPart.text;
-
-        // 使用正则表达式提取代码块内容
-        // 匹配 ```tsx 或 ```jsx 或 ```javascript 或 ```js 后的代码内容
-        const codeBlockRegex = /```(?:tsx|jsx|javascript|js)?\n([\s\S]*?)```/g;
-        const matches = Array.from(text.matchAll(codeBlockRegex));
-
-        if (matches.length > 0) {
-          // 提取第一个代码块的内容
-          return matches[0][1].trim();
-        }
-
-        // 如果没有找到代码块标记，尝试移除可能的描述文字
-        // 匹配以 import 或 function 或 const 开头的代码
-        const codeStartRegex = /(?:^|\n)(import|function|const|export|class|interface|type)\s/m;
-        const match = text.match(codeStartRegex);
-
-        if (match) {
-          // 从代码开始位置截取到末尾
-          const codeStart = match.index;
-          let code = text.slice(codeStart);
-
-          // 移除末尾的非代码内容（描述性文字）
-          // 通常描述在代码后会空行，然后是中文或英文描述
-          code = code.replace(/\n\n[^\n]*?(这段|上面|以下|这是|The above|This|The following).*?(代码|code|组件|component|函数|function).*$/gmi, "");
-          code = code.replace(/\n\n[^\n]*?(定义了|defines?|contains?|is).*?$/gmi, "");
-
-          return code.trim();
-        }
-
-        return text.trim();
+        // Parse using multi-file parser
+        const { files: parsed } = parseGeneratedFiles(text);
+        // Return the main App.js code as the primary generated code string
+        return parsed["/App.js"] || parsed["/App.tsx"] || Object.values(parsed)[0] || text.trim();
       }
     } catch (err) {
       console.error("Failed to parse generated code:", err);
@@ -193,6 +201,33 @@ export default function EditorPage() {
     }
     return "";
   }, [lastMessage]);
+
+  // Parse all generated files from the last assistant message
+  const generatedFiles = useMemo<Record<string, string>>(() => {
+    if (lastMessage?.role !== "assistant" || !lastMessage?.parts) return {};
+    try {
+      const lastPart = lastMessage.parts[lastMessage.parts.length - 1];
+      if (lastPart?.type === "text") {
+        const { files } = parseGeneratedFiles(lastPart.text);
+        return files;
+      }
+    } catch (err) {
+      console.error("Failed to parse files:", err);
+    }
+    return {};
+  }, [lastMessage]);
+
+  const fileNameList = useMemo(() => Object.keys(generatedFiles), [generatedFiles]);
+  const [activeFile, setActiveFile] = useState<string>("/App.js");
+
+  // Reset activeFile when new files are generated
+  useEffect(() => {
+    if (fileNameList.length > 0) {
+      if (!fileNameList.includes(activeFile)) {
+        setActiveFile(fileNameList[0]);
+      }
+    }
+  }, [fileNameList, activeFile]);
 
   // 保存代码到历史记录
   useEffect(() => {
@@ -409,30 +444,33 @@ export default function EditorPage() {
   }, [uploadedImage, getCanvasImage, sendMessage, error]);
 
   const handleCopyCode = useCallback(async () => {
-    if (!generatedCode) return;
+    const code = generatedFiles[activeFile] || generatedCode;
+    if (!code) return;
 
     try {
-      await navigator.clipboard.writeText(generatedCode);
+      await navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       setError("复制代码失败");
     }
-  }, [generatedCode]);
+  }, [generatedFiles, activeFile, generatedCode]);
 
   const handleDownloadCode = useCallback(() => {
-    if (!generatedCode) return;
+    const code = generatedFiles[activeFile] || generatedCode;
+    if (!code) return;
 
-    const blob = new Blob([generatedCode], { type: "text/plain" });
+    const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `component-${Date.now()}.jsx`;
+    const fileName = activeFile.split("/").pop() || "component";
+    a.download = `${fileName}-${Date.now()}.js`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [generatedCode]);
+  }, [generatedFiles, activeFile, generatedCode]);
 
   // 快捷键支持 + 粘贴图片
   useEffect(() => {
@@ -956,50 +994,103 @@ export default function EditorPage() {
             isDark ? "bg-black/30" : "bg-white"
           }`}
         >
-          {/* Action Bar */}
+          {/* File Tree + Action Bar */}
           {generatedCode && (
             <div
-              className={`h-12 border-b flex items-center justify-between px-4 backdrop-blur-xl transition-colors duration-300 ${
+              className={`border-b backdrop-blur-xl transition-colors duration-300 ${
                 isDark
                   ? "bg-black/50 border-white/10"
                   : "bg-gray-50 border-gray-200"
               }`}
             >
-              <div
-                className={`text-xs font-mono ${
-                  isDark ? "text-gray-500" : "text-gray-400"
-                }`}
-              >
-                {generatedCode.split("\n").length} 行 •{" "}
-                {(generatedCode.length / 1024).toFixed(1)} KB
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopyCode}
-                  className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
-                    isDark
-                      ? "text-gray-400 hover:text-white hover:bg-white/5"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+              {/* File tree — hidden when only 1 file */}
+              {fileNameList.length > 1 && (
+                <div className={`flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto scrollbar-thin ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
+                  {fileNameList.map((name) => {
+                    const isActive = name === activeFile;
+                    const ext = name.split('.').pop() || '';
+                    const isComponent = name.startsWith('/components/');
+                    const fileName = name.split('/').pop() || name;
+
+                    // Color by extension / location
+                    let iconColor = isDark ? 'text-blue-400' : 'text-blue-600';
+                    if (ext === 'css') iconColor = isDark ? 'text-purple-400' : 'text-purple-600';
+                    else if (isComponent) iconColor = isDark ? 'text-cyan-400' : 'text-cyan-600';
+                    else if (ext === 'ts' || ext === 'tsx') iconColor = isDark ? 'text-blue-400' : 'text-blue-600';
+
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => setActiveFile(name)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono whitespace-nowrap transition-all ${
+                          isActive
+                            ? isDark
+                              ? 'bg-white/15 text-white shadow-sm'
+                              : 'bg-gray-900 text-white shadow-sm'
+                            : isDark
+                              ? 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                              : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                        }`}
+                        title={name}
+                      >
+                        <svg
+                          className={`w-3 h-3 flex-shrink-0 ${iconColor}`}
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          {isComponent ? (
+                            // Component icon (folder-like)
+                            <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.172a1.5 1.5 0 0 1 1.06.44l.83.828H13.5A1.5 1.5 0 0 1 15 5.5v7A1.5 1.5 0 0 1 13.5 14h-11A1.5 1.5 0 0 1 1 12.5v-9Z" />
+                          ) : (
+                            // File icon
+                            <path d="M4 1h5.586a1 1 0 0 1 .707.293l3.414 3.414a1 1 0 0 1 .293.707V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1Zm4 1v3a1 1 0 0 0 1 1h3L8 2Z" />
+                          )}
+                        </svg>
+                        {fileName}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Stats bar */}
+              <div className="h-10 flex items-center justify-between px-4">
+                <div
+                  className={`text-xs font-mono ${
+                    isDark ? "text-gray-500" : "text-gray-400"
                   }`}
                 >
-                  {copied ? (
-                    <Check className="w-3 h-3 text-green-400" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                  {copied ? "已复制！" : "复制"}
-                </button>
-                <button
-                  onClick={handleDownloadCode}
-                  className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
-                    isDark
-                      ? "text-gray-400 hover:text-white hover:bg-white/5"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                  }`}
-                >
-                  <Download className="w-3 h-3" />
-                  下载
-                </button>
+                  {fileNameList.length} 文件 •{" "}
+                  {generatedCode.split("\n").length} 行 •{" "}
+                  {(generatedCode.length / 1024).toFixed(1)} KB
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCopyCode}
+                    className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
+                      isDark
+                        ? "text-gray-400 hover:text-white hover:bg-white/5"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
+                  >
+                    {copied ? (
+                      <Check className="w-3 h-3 text-green-400" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                    {copied ? "已复制！" : "复制"}
+                  </button>
+                  <button
+                    onClick={handleDownloadCode}
+                    className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
+                      isDark
+                        ? "text-gray-400 hover:text-white hover:bg-white/5"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Download className="w-3 h-3" />
+                    下载
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1054,9 +1145,9 @@ export default function EditorPage() {
               <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-auto">
                   {activeTab === "preview" ? (
-                    <PreviewMode code={generatedCode} isDark={isDark} />
+                    <PreviewMode files={generatedFiles} isDark={isDark} />
                   ) : (
-                    <CodeMode code={generatedCode} isDark={isDark} />
+                    <CodeMode files={generatedFiles} activeFile={activeFile} isDark={isDark} />
                   )}
                 </div>
 
@@ -1153,6 +1244,37 @@ export default function EditorPage() {
                   isDark ? "text-gray-400" : "text-gray-600"
                 }`}
               >
+                {isGeneratingFromTemplate ? (
+                  <>
+                    <div className="relative mb-8">
+                      <div
+                        className={`w-24 h-24 border rounded-2xl flex items-center justify-center backdrop-blur-sm transition-colors duration-300 ${
+                          isDark
+                            ? "border-violet-500/30 bg-violet-500/10"
+                            : "border-violet-300 bg-violet-50"
+                        }`}
+                      >
+                        <Loader2 className="w-12 h-12 text-violet-500 animate-spin" />
+                      </div>
+                      <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 rounded-3xl blur-2xl -z-10 animate-pulse"></div>
+                    </div>
+                    <h3
+                      className={`text-2xl font-semibold mb-2 ${
+                        isDark ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      正在从模板生成...
+                    </h3>
+                    <p
+                      className={`max-w-md text-sm leading-relaxed ${
+                        isDark ? "text-gray-500" : "text-gray-600"
+                      }`}
+                    >
+                      AI 正在根据模板生成页面代码，请稍候片刻
+                    </p>
+                  </>
+                ) : (
+                <>
                 <div className="relative mb-8">
                   <div
                     className={`w-24 h-24 border rounded-2xl flex items-center justify-center backdrop-blur-sm transition-colors duration-300 ${
@@ -1233,6 +1355,8 @@ export default function EditorPage() {
                     <span>自动保存</span>
                   </div>
                 </div>
+                </>
+                )}
               </div>
             )}
           </div>

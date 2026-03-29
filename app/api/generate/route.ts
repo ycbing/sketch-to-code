@@ -20,38 +20,43 @@ You are in a multi-turn conversation. The user may provide a sketch first, then 
 - Base your modifications on the LATEST version of the code you previously generated
 - Apply ONLY the requested changes, preserving everything else
 - Output the COMPLETE modified code (not just the diff or changed parts)
-- Maintain the same output format (code inside \`\`\`tsx fence)
+- Maintain the same output format with \`---FILE:\` markers
 
-# Output Format
+# Output Format — MULTI-FILE
 
-Your output MUST follow this exact structure — a brief layout analysis comment block, then the full code, wrapped in a single \`\`\`tsx code fence:
+You MUST output your code using the \`---FILE:\` marker format. Each file is delimited by a marker on its own line:
 
-\`\`\`tsx
-/**
- * [Layout Analysis]
- * ─────────────────
- * Layout: {e.g., "Two-column: left sidebar + right main content"}
- * Components: {e.g., "Header with logo + nav, Sidebar with menu items, Main area with 3 cards grid, Footer"}
- * Colors: {e.g., "Primary: blue-600, Background: gray-50, Text: gray-900, Accent: emerald-500"}
- */
+---FILE: /App.js
+(the full code for App.js)
 
-export default function SketchPage() {
-  // ... complete, runnable code
-}
-\`\`\`
+---FILE: /components/Header.js
+(the full code for Header.js)
+
+---FILE: /components/Card.js
+(the full code for Card.js)
+
+## File Output Rules
+- The MAIN file is ALWAYS \`/App.js\` — it must export the root component as \`export default function SketchPage()\`
+- If the page is simple (1-2 areas), you MAY output only \`/App.js\` as a single file
+- For complex pages (≥3 distinct regions), SPLIT into separate component files under \`/components/\`
+- Each file MUST be a complete, runnable module with all necessary imports
+- Components in \`/components/\` are imported into \`/App.js\` using relative paths like: \`import Header from './components/Header'\`
+- File extensions: use \`.js\` (not \`.tsx\`/\`.jsx\`) since this runs in a plain React sandbox
+- Do NOT add any explanation, markdown, or text outside the file markers
+- The very last line of your output should be the closing of the last file's code — no trailing text
 
 # Code Requirements
 
 ## Technology Stack
-- React 18+ with TypeScript
+- React 18+ (plain JavaScript)
 - Tailwind CSS utility classes ONLY — no inline styles, no CSS-in-JS, no external CSS files
 - Lucide React icons when icons are needed: \`import { IconName } from "lucide-react"\`
 - No external dependencies beyond lucide-react
 
 ## Completeness
-- Output a SINGLE complete file that can run standalone in a Sandpack React template
-- Include ALL necessary imports at the top
-- Export the root component as \`export default function SketchPage()\`
+- Each file must be complete and runnable on its own (proper imports/exports)
+- Include ALL necessary imports at the top of each file
+- Export components as named exports from component files, and as default export from App.js
 - Do NOT use placeholder comments like "// rest of code" — write the FULL implementation
 
 ## Layout & Spacing
@@ -62,9 +67,10 @@ export default function SketchPage() {
 - Apply consistent vertical rhythm — elements in a list/card should share the same spacing
 
 ## Component Decomposition
-- If the sketch has ≥3 distinct visual regions, define sub-components in the SAME file above the default export
+- For complex pages (≥3 distinct regions), split into separate files under \`/components/\`
 - Keep sub-components focused and well-named (e.g., \`Header\`, \`ProductCard\`, \`Sidebar\`, \`StatsCard\`)
 - Pass data via props or define it as inline constants
+- In App.js, import and compose all sub-components
 
 ## Responsiveness
 - Mobile-first approach: design for narrow viewports first, then use \`md:\` and \`lg:\` breakpoints
@@ -86,12 +92,14 @@ export default function SketchPage() {
 - If the sketch has no explicit colors, use a clean neutral palette with a single accent (blue-600)
 
 ## What NOT to Do
-- ❌ Do NOT add any explanation, markdown, or text outside the code fence
+- ❌ Do NOT add any explanation, markdown, or text outside the ---FILE: markers
 - ❌ Do NOT use \`<style>\` tags or CSS files
 - ❌ Do NOT use placeholder comments for unfinished sections
 - ❌ Do NOT import from external libraries except lucide-react
 - ❌ Do NOT use next/image, next/link, or Next.js-specific APIs (this runs in a plain React sandbox)
-- ❌ Do NOT use state management (useState, useEffect) unless the sketch clearly shows interactive elements that require it`;
+- ❌ Do NOT use state management (useState, useEffect) unless the sketch clearly shows interactive elements that require it
+- ❌ Do NOT use \`.tsx\` or \`.jsx\` file extensions — always use \`.js\`
+- ❌ Do NOT wrap files in \`\`\` code fences`;
 
 /**
  * Convert a UIMessage into the format expected by the AI SDK's streamText.
