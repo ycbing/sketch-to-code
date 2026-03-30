@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server-db";
 import { projects, versions } from "@/lib/server-db/schema";
 import { eq } from "drizzle-orm";
+import { initDatabase } from "@/lib/init-db";
+
+initDatabase();
 
 export const dynamic = "force-dynamic";
 

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server-db";
 import { projects } from "@/lib/server-db/schema";
 import { desc } from "drizzle-orm";
+import { initDatabase } from "@/lib/init-db";
+
+// 确保表存在
+initDatabase();
 
 export const dynamic = "force-dynamic";
 

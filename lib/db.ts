@@ -1,6 +1,7 @@
 // lib/db.ts
 // 双写模式：IndexedDB（前端缓存/离线） + 服务端 SQLite（持久化）
 import { openDB, DBSchema, IDBPDatabase } from "idb";
+import { nanoid } from "nanoid";
 
 // ──────────────────────────────────────────────
 // IndexedDB Schema（保持不变，作为前端缓存）
@@ -80,7 +81,7 @@ async function apiFetch(url: string, options?: RequestInit) {
 
 export async function createProject(name: string, description?: string) {
   const db = await getDB();
-  const id = crypto.randomUUID();
+  const id = nanoid();
   const now = Date.now();
 
   const project = { id, name, description, createdAt: now, updatedAt: now };
@@ -141,7 +142,7 @@ export async function createVersion(
   const versions = await db.getAllFromIndex("versions", "by-project", projectId);
   const maxVersion = versions.reduce((max, v) => Math.max(max, v.versionNum), 0);
 
-  const id = crypto.randomUUID();
+  const id = nanoid();
   const version = {
     id,
     projectId,

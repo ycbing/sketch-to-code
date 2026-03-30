@@ -160,17 +160,24 @@ export default function EditorPage() {
       try {
         const { getTemplateById } = await import("@/lib/templates");
         const template = getTemplateById(templateId);
-        if (!template) return;
+        if (!template) {
+          setError("模板不存在，请返回重试");
+          return;
+        }
 
         setIsGeneratingFromTemplate(true);
         // Small delay to ensure chat transport is ready
-        await new Promise((r) => setTimeout(r, 300));
-        await sendMessage({ text: template.initialPrompt });
+        await new Promise((r) => setTimeout(r, 500));
+        await sendMessage({ text: template.initialPrompt }).catch((err: any) => {
+          console.error("sendMessage failed:", err);
+          setError("生成请求失败，请检查网络或 AI 模型配置后重试");
+        });
         // Clean up URL
         window.history.replaceState({}, "", `/editor/${projectId}`);
         setIsGeneratingFromTemplate(false);
       } catch (err) {
         console.error("Failed to generate from template:", err);
+        setError("模板生成失败，请重试");
         setIsGeneratingFromTemplate(false);
       }
     }, 500);
@@ -246,6 +253,8 @@ export default function EditorPage() {
   const saveVersionToDatabase = useCallback(
     async (code: string) => {
       if (!editor) return;
+      // 安全检查 store 已就绪
+      try { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ (editor as any).store.getState(); } catch { return; }
 
       try {
         const shapeIds = editor.getCurrentPageShapeIds();
@@ -301,12 +310,24 @@ export default function EditorPage() {
   );
 
   const getCanvasImage = useCallback(async () => {
-    if (!editor) return null;
+    if (!editor) {
+      setError("画布还在加载中，请稍后重试");
+      return null;
+    }
 
     try {
+      // 安全检查：确保 editor 内部状态已就绪
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (editor as any).store.getState();
+      } catch {
+        setError("画布还在初始化中，请稍后重试");
+        return null;
+      }
+
       const shapeIds = editor.getCurrentPageShapeIds();
       if (shapeIds.size === 0) {
-        setError("请先在画布上绘制内容");
+        setError("请先在画布上绘制内容，或上传设计稿截图");
         return null;
       }
 
@@ -398,6 +419,7 @@ export default function EditorPage() {
   }, []);
 
   const handleGenerate = useCallback(async () => {
+    if (status === "streaming") return; // 防止重复点击
     setError(null);
 
     // Priority: uploaded image > canvas screenshot
@@ -858,8 +880,8 @@ export default function EditorPage() {
               className="hidden"
             />
 
-            {/* Floating control */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
+            {/* Floating control — top of canvas to avoid tldraw bottom toolbar overlap */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
               <div
                 className={`backdrop-blur-xl border rounded-2xl p-4 shadow-2xl transition-colors duration-300 ${
                   isDark
