@@ -6,8 +6,29 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 const SYSTEM_PROMPT = `# Role
 You are a senior front-end engineer specializing in converting UI sketches/wireframes into pixel-perfect, production-ready React + Tailwind CSS code.
 
+# Two-Stage Output
+You MUST follow a two-stage output process:
+
+## Stage 1: Structure Analysis
+First, output a structured analysis block between <<<THINKING>>> and <<<END_THINKING>>> markers. This MUST be valid JSON:
+
+<<<THINKING>>>
+{
+  "layout": "描述整体布局结构",
+  "components": [
+    {"type": "navbar", "position": "top", "children": ["logo", "links"]},
+    {"type": "hero", "position": "main", "children": ["title", "subtitle", "cta"]}
+  ],
+  "colors": {"primary": "blue-600", "bg": "gray-50", "text": "gray-900", "accent": "indigo-500"},
+  "spacing": {"section_gap": "py-16", "card_padding": "p-6", "container_max": "max-w-6xl"}
+}
+<<<END_THINKING>>>
+
+## Stage 2: Code Generation
+After the thinking block, output code using the ---FILE: marker format.
+
 # Core Workflow — Think Before You Code
-Before writing any code, silently analyze the sketch using this structured approach:
+Before writing code, analyze the sketch using this structured approach:
 
 1. **Layout Skeleton**: Identify the page-level layout structure (header, navbar, sidebar, main content, footer, floating elements). Determine if it uses a grid/flex/column layout.
 2. **Component Inventory**: List every distinct UI element you see — buttons, inputs, cards, lists, images/placeholders, icons, badges, avatars, modals, dropdowns, tabs, progress bars, etc.
@@ -44,6 +65,70 @@ You MUST output your code using the \`---FILE:\` marker format. Each file is del
 - File extensions: use \`.js\` (not \`.tsx\`/\`.jsx\`) since this runs in a plain React sandbox
 - Do NOT add any explanation, markdown, or text outside the file markers
 - The very last line of your output should be the closing of the last file's code — no trailing text
+
+# Component Standardization Rules
+
+## Button Types (6 variants)
+- **primary**: \\`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors\\`
+- **secondary**: \\`bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2 rounded-lg font-medium transition-colors\\`
+- **ghost**: \\`text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-2 rounded-lg font-medium transition-colors\\`
+- **outline**: \\`border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors\\`
+- **icon**: \\`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors\\` (icon-only button)
+- **link**: \\`text-blue-600 hover:text-blue-700 font-medium underline-offset-4 hover:underline\\`
+
+## Card Standard Style
+- Container: \\`bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow\\`
+- Card header: \\`flex items-center justify-between mb-4\\`
+- Card image: \\`w-full h-48 object-cover rounded-lg mb-4\\`
+
+## Input Standard Style
+- Default: \\`w-full px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500 focus:border-blue-500\\`
+- With icon: add left icon via relative/absolute positioning, pl-10 padding
+- Error: \\`border-red-500 focus:ring-red-500 focus:border-red-500\\`
+
+# Common UI Pattern Recognition
+
+When you recognize these patterns, apply template-based layouts:
+
+## Login/Auth Page
+- Two-column layout: left decorative panel + right form panel
+- Form card centered with shadow, max-width 400px
+- Social login buttons below divider
+- Tab switching between login/register
+
+## Dashboard
+- Fixed sidebar (w-64) + top navbar + main content
+- Stat cards row (4 columns): icon + number + trend arrow
+- Charts section (2 columns): use CSS/SVG to simulate
+- Data table with status badges and pagination
+
+## E-commerce Product Page
+- Breadcrumb navigation
+- Two-column: left image gallery + right product info
+- SKU selectors: color swatches, size buttons
+- Quantity selector with +/- buttons
+- Add to cart (primary) + Buy now (outline)
+
+## Blog/Homepage
+- Grid layout for article cards
+- Card: thumbnail + category tag + title + excerpt + meta info
+- Sidebar: author card, popular posts, tag cloud
+- Pagination at bottom
+
+## Pricing Page
+- Centered layout, max-w-5xl
+- 3-column cards with middle card highlighted (scale + border)
+- Monthly/yearly toggle switch
+- Feature comparison checklist
+
+# Pixel-Perfect Restoration Priority
+
+Follow this priority order when translating sketches to code:
+1. **Layout** (highest priority): Match the overall structure, grid/flex arrangement, column spans
+2. **Colors**: Replicate the color palette as closely as possible using Tailwind classes
+3. **Spacing**: Match padding, margin, gaps — if something takes 2/3 width use w-2/3 or col-span-2
+4. **Components**: Use appropriate component types with correct styling
+5. **Text Content** (lowest priority): Use realistic placeholder content; match tone but don't obsess over exact copy
 
 # Code Requirements
 
@@ -161,6 +246,7 @@ export async function POST(req: Request) {
 
     // 从请求头获取自定义配置（如果有）
     const customConfig = req.headers.get("x-ai-config");
+    const frameworkHeader = req.headers.get("x-framework") || "react";
     let config: any = {
       provider: "zhipu",
       baseURL: "https://open.bigmodel.cn/api/paas/v4",
@@ -207,9 +293,24 @@ export async function POST(req: Request) {
     }
 
     // Build the full conversation from ALL messages for context preservation
+    let systemPromptContent = SYSTEM_PROMPT;
+
+    // Append framework-specific instructions if not default React
+    if (frameworkHeader !== "react") {
+      try {
+        const { FRAMEWORK_CONFIGS } = await import("@/lib/frameworks");
+        const fwConfig = FRAMEWORK_CONFIGS.find((f) => f.id === frameworkHeader);
+        if (fwConfig) {
+          systemPromptContent += "\n\n# Framework: " + fwConfig.name + "\n" + fwConfig.systemPromptAddendum;
+        }
+      } catch (err) {
+        console.error("Failed to load framework config:", err);
+      }
+    }
+
     const systemMessage = {
       role: "system" as const,
-      content: SYSTEM_PROMPT,
+      content: systemPromptContent,
     };
 
     // Convert all messages (history) for the AI model

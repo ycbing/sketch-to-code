@@ -19,12 +19,15 @@ export interface ParsedFiles {
 }
 
 export function parseGeneratedFiles(text: string): ParsedFiles {
+  // Strip <<<THINKING>>> ... <<<END_THINKING>>> blocks (two-stage generation)
+  const cleanedText = text.replace(/<<<THINKING>>>[\s\S]*?<<<END_THINKING>>>/g, "");
+
   // Check if the text uses the multi-file format
-  const matches = Array.from(text.matchAll(FILE_DELIMITER));
+  const matches = Array.from(cleanedText.matchAll(FILE_DELIMITER));
 
   if (matches.length === 0) {
-    // Single file mode: treat entire text as /App.js
-    const code = text.trim();
+    // Single file mode: treat entire cleaned text as /App.js
+    const code = cleanedText.trim();
     if (!code) {
       return { files: {}, fileNames: [] };
     }
@@ -41,9 +44,9 @@ export function parseGeneratedFiles(text: string): ParsedFiles {
     const match = matches[i];
     const filePath = match[1].trim();
     const codeStart = match.index! + match[0].length;
-    const codeEnd = i + 1 < matches.length ? matches[i + 1].index! : text.length;
+    const codeEnd = i + 1 < matches.length ? matches[i + 1].index! : cleanedText.length;
 
-    let code = text.slice(codeStart, codeEnd).trim();
+    let code = cleanedText.slice(codeStart, codeEnd).trim();
 
     // Remove leading/trailing markdown code fences if present
     // e.g. ```tsx\n...\n```
