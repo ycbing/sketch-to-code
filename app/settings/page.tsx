@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server } from "lucide-react";
+import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
 
 interface AIModelConfig {
   provider: "openai" | "anthropic" | "zhipu" | "siliconflow";
@@ -41,6 +42,7 @@ export default function SettingsPage() {
     baseURL: DEFAULT_CONFIGS.zhipu.baseURL,
     model: DEFAULT_CONFIGS.zhipu.model,
   });
+  const [defaultFramework, setDefaultFramework] = useState<Framework>("react");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
@@ -54,6 +56,10 @@ export default function SettingsPage() {
       } catch (err) {
         console.error("Failed to parse saved config:", err);
       }
+    }
+    const savedFramework = localStorage.getItem("sketch-framework") as Framework | null;
+    if (savedFramework) {
+      setDefaultFramework(savedFramework);
     }
   }, []);
 
@@ -74,6 +80,7 @@ export default function SettingsPage() {
     }
 
     localStorage.setItem("ai-model-config", JSON.stringify(config));
+    localStorage.setItem("sketch-framework", defaultFramework);
     setSaved(true);
     setError(null);
     setTimeout(() => setSaved(false), 2000);
@@ -272,6 +279,39 @@ export default function SettingsPage() {
               {error}
             </div>
           )}
+        </div>
+
+        {/* Default Framework */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            🖥️ 默认输出框架
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            选择 AI 生成代码时的默认框架，也可在编辑器中随时切换
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {FRAMEWORK_CONFIGS.map((fw) => (
+              <button
+                key={fw.id}
+                onClick={() => setDefaultFramework(fw.id)}
+                className={`p-4 border-2 rounded-lg text-left transition-all ${
+                  defaultFramework === fw.id
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{fw.icon}</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {fw.name}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  {fw.description}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Help Section */}

@@ -45,6 +45,7 @@ const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), {
 import "tldraw/tldraw.css";
 import { PreviewMode } from "@/components/editor/PreviewMode";
 import { CodeMode } from "@/components/editor/CodeMode";
+import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
 
 type TabType = "preview" | "code";
 type Theme = "light" | "dark";
@@ -71,6 +72,7 @@ export default function EditorPage() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [theme, setTheme] = useState<Theme>("dark");
   const [projectName, setProjectName] = useState<string>("");
+  const [framework, setFramework] = useState<Framework>("react");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isGeneratingFromTemplate, setIsGeneratingFromTemplate] = useState(false);
@@ -83,6 +85,10 @@ export default function EditorPage() {
       setTheme(savedTheme);
     } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
       setTheme("light");
+    }
+    const savedFramework = localStorage.getItem("sketch-framework") as Framework | null;
+    if (savedFramework && FRAMEWORK_CONFIGS.find((f) => f.id === savedFramework)) {
+      setFramework(savedFramework);
     }
   }, []);
 
@@ -138,12 +144,12 @@ export default function EditorPage() {
       api: "/api/generate",
       headers: () => {
         const config = getAIConfig();
+        const hdrs: Record<string, string> = {};
         if (config) {
-          return {
-            "x-ai-config": JSON.stringify(config),
-          } as Record<string, string>;
+          hdrs["x-ai-config"] = JSON.stringify(config);
         }
-        return {} as Record<string, string>;
+        hdrs["x-framework"] = framework;
+        return hdrs;
       },
     }),
   });
@@ -603,6 +609,30 @@ export default function EditorPage() {
               <span className="font-semibold text-lg tracking-tight">
                 {projectName || "加载中..."}
               </span>
+            </div>
+            {/* Framework Selector */}
+            <div className={`flex items-center gap-1 p-1 rounded-lg ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+              {FRAMEWORK_CONFIGS.map((fw) => (
+                <button
+                  key={fw.id}
+                  onClick={() => {
+                    setFramework(fw.id);
+                    localStorage.setItem("sketch-framework", fw.id);
+                  }}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                    framework === fw.id
+                      ? isDark
+                        ? "bg-white text-black shadow-sm"
+                        : "bg-white text-gray-900 shadow-sm"
+                      : isDark
+                        ? "text-gray-400 hover:text-white"
+                        : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  title={fw.description}
+                >
+                  {fw.icon} {fw.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1167,9 +1197,9 @@ export default function EditorPage() {
               <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-auto">
                   {activeTab === "preview" ? (
-                    <PreviewMode files={generatedFiles} isDark={isDark} />
+                    <PreviewMode files={generatedFiles} isDark={isDark} framework={framework} />
                   ) : (
-                    <CodeMode files={generatedFiles} activeFile={activeFile} isDark={isDark} />
+                    <CodeMode files={generatedFiles} activeFile={activeFile} isDark={isDark} framework={framework} />
                   )}
                 </div>
 

@@ -7,10 +7,23 @@ import {
   useSandpack 
 } from "@codesandbox/sandpack-react";
 import { Loader2, AlertCircle } from "lucide-react";
+import type { Framework } from "@/lib/frameworks";
+import { getFrameworkConfig } from "@/lib/frameworks";
 
 interface PreviewModeProps {
   files: Record<string, string>;
   isDark: boolean;
+  framework?: Framework;
+}
+
+// Simple WXML to HTML converter for miniprogram preview
+function convertWxmlToHtml(wxml: string): string {
+  return wxml
+    .replace(/wx:for="(\{\{[^}]+\}\})"\s*wx:key="([^"]+)"/g, 'v-for="(item, index) in $1" :key="item.$2"')
+    .replace(/wx:if="(\{\{[^}]+\}\})"/g, 'v-if="$1"')
+    .replace(/bindtap="([^"]+)"/g, '@click="$1"')
+    .replace(/\{\{([^}]+)\}\}/g, '{{ $1 }}')
+    .replace(/class="([^"]*?)"/g, 'class="$1"');
 }
 
 // Status overlay: shows loading/error states based on Sandpack compilation
@@ -48,27 +61,70 @@ function StatusOverlay() {
   return null;
 }
 
-export function PreviewMode({ files, isDark }: PreviewModeProps) {
+export function PreviewMode({ files, isDark, framework = "react" }: PreviewModeProps) {
+  const fwConfig = getFrameworkConfig(framework);
+  const template = fwConfig?.sandpackTemplate || "react";
+
+  // For miniprogram: convert WXML files to HTML for preview
+  let previewFiles = { ...files };
+  if (framework === "miniprogram") {
+    const convertedFiles: Record<string, string> = {};
+    for (const [path, content] of Object.entries(files)) {
+      if (path.endsWith(".wxml")) {
+        // Convert to HTML and create as index.html
+        convertedFiles["/index.html"] = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }</style>
+</head>
+<body>
+${convertWxmlToHtml(content)}
+</body>
+</html>`;
+      } else if (path.endsWith(".wxss")) {
+        convertedFiles["/styles.css"] = content;
+      }
+    }
+    // If no index.html was generated, fall back to original files
+    if (Object.keys(convertedFiles).length > 0) {
+      previewFiles = convertedFiles;
+    }
+  }
+
+  // For HTML framework: ensure proper template setup
+  if (framework === "html") {
+    // HTML files should already be complete, use vanilla template
+  }
+
+  const dependencies: Record<string, string> = {
+    ...(framework === "react" ? { "lucide-react": "^0.292.0", "@stitches/react": "^1.2.8", "react": "^18.2.0", "react-dom": "^18.2.0" } : {}),
+    ...(framework === "vue" ? { "lucide-vue-next": "^0.344.0", "vue": "^3.3.0" } : {}),
+    ...(fwConfig?.extraDependencies || {}),
+  };
+
+  // For miniprogram and html, use vanilla template with no deps
+  const isVanilla = framework === "miniprogram" || framework === "html";
+
   return (
     <div className="h-full w-full relative group">
       <SandpackProvider
-        template="react"
+        template={template}
         theme={isDark ? "dark" : "light"}
-        files={files}
+        files={previewFiles}
         options={{
-          externalResources: ["https://cdn.tailwindcss.com"],
+          externalResources: isVanilla ? ["https://cdn.tailwindcss.com"] : ["https://cdn.tailwindcss.com"],
           initMode: "user-visible", 
           recompileMode: "delayed",
           recompileDelay: 300,
         }}
-        customSetup={{
-          dependencies: {
-            "lucide-react": "^0.292.0",
-            "@stitches/react": "^1.2.8",
-            "react": "^18.2.0",
-            "react-dom": "^18.2.0",
-          },
-        }}
+        customSetup={
+          !isVanilla
+            ? { dependencies }
+            : undefined
+        }
       >
         <SandpackLayout style={{ 
           height: "100%", 

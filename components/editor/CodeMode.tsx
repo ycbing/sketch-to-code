@@ -5,19 +5,25 @@ import {
   SandpackLayout, 
   SandpackCodeEditor 
 } from "@codesandbox/sandpack-react";
+import type { Framework } from "@/lib/frameworks";
+import { getFrameworkConfig } from "@/lib/frameworks";
 
 interface CodeModeProps {
   files: Record<string, string>;
   activeFile: string;
   isDark: boolean;
+  framework?: Framework;
   readOnly?: boolean;
 }
 
-export function CodeMode({ files, activeFile, isDark, readOnly = false }: CodeModeProps) {
+export function CodeMode({ files, activeFile, isDark, framework = "react", readOnly = false }: CodeModeProps) {
+  const fwConfig = getFrameworkConfig(framework);
+  const template = fwConfig?.sandpackTemplate || "react";
+
   return (
     <div className="h-full w-full">
       <SandpackProvider
-        template="react"
+        template={template}
         theme={isDark ? "dark" : "light"}
         files={files}
         options={{
