@@ -191,6 +191,59 @@ Follow this priority order when translating sketches to code:
  * Handles multi-part messages (text + image) from the first sketch message,
  * and plain text from subsequent refinement messages.
  */
+
+// ─── Simple in-memory rate limiter ────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_MAX = 10; // requests per window
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfter: number } {
+  const now = Date.now();
+  let entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW };
+    rateLimitMap.set(ip, entry);
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  // Cleanup old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, val] of rateLimitMap) {
+      if (now > val.resetAt) rateLimitMap.delete(key);
+    }
+  }
+  return { allowed: true, retryAfter: 0 };
+}
+
+// ─── Retry with exponential backoff ──────────────────────────
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 2,
+  baseDelay = 1000,
+): Promise<T> {
+  let lastError: any;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      const status = err?.statusCode || err?.status || 0;
+      // Only retry on 429 (rate limit) or 5xx (server error)
+      if (status !== 429 && (status < 500 || status > 599) && !String(err).includes('rate')) {
+        throw err;
+      }
+      if (i < maxRetries) {
+        const delay = baseDelay * Math.pow(2, i) + Math.random() * 500;
+        console.log(`[Retry ${i + 1}/${maxRetries}] Waiting ${Math.round(delay)}ms before retry...`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function convertMessage(msg: UIMessage): {
   role: "user" | "assistant";
   content: Array<{ type: string; text?: string; image?: string }>;
@@ -242,6 +295,17 @@ function convertMessage(msg: UIMessage): {
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+               req.headers.get('x-real-ip') || 'unknown';
+    const { allowed, retryAfter } = checkRateLimit(ip);
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: `请求过于频繁，请 ${retryAfter} 秒后重试` }),
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } },
+      );
+    }
+
     const { messages } = await req.json();
 
     // 从请求头获取自定义配置（如果有）
@@ -316,16 +380,25 @@ export async function POST(req: Request) {
     // Convert all messages (history) for the AI model
     const conversationMessages = messages.map(convertMessage);
 
-    const result = await streamText({
-      model,
-      messages: [systemMessage, ...conversationMessages],
+    const streamResult = await withRetry(() => {
+      // streamText returns a StreamTextResult (not a promise around it),
+      // so we wrap the entire streamText call in a Promise
+      return Promise.resolve(
+        streamText({
+          model,
+          messages: [systemMessage, ...conversationMessages],
+        })
+      );
     });
 
-    return result.toUIMessageStreamResponse();
-  } catch (error) {
+    return streamResult.toUIMessageStreamResponse();
+  } catch (error: any) {
+    const status = error?.statusCode || error?.status;
     console.error("API Error:", error);
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
+    return new Response(JSON.stringify({ 
+      error: status === 429 ? "AI 模型请求过于频繁，请稍后重试" : String(error) 
+    }), {
+      status: status === 429 ? 429 : 500,
       headers: { "Content-Type": "application/json" },
     });
   }
