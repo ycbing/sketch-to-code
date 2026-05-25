@@ -520,6 +520,23 @@ export default function EditorPage() {
     }
   }, [generatedFiles, activeFile, generatedCode]);
 
+  const [copiedAll, setCopiedAll] = useState(false);
+  const handleCopyAllCode = useCallback(async () => {
+    if (Object.keys(generatedFiles).length === 0) return;
+
+    try {
+      // Build a formatted text with file paths as headers
+      const allCode = Object.entries(generatedFiles)
+        .map(([path, code]) => `// ---${path}---\n${code}`)
+        .join("\n\n");
+      await navigator.clipboard.writeText(allCode);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    } catch (err) {
+      setError("复制全部代码失败");
+    }
+  }, [generatedFiles]);
+
   const handleDownloadCode = useCallback(() => {
     const code = generatedFiles[activeFile] || generatedCode;
     if (!code) return;
@@ -1088,12 +1105,28 @@ export default function EditorPage() {
                     <Undo2 className="w-5 h-5" />
                   </button>
                 </div>
-                <div
-                  className={`mt-3 text-[11px] text-center font-mono ${
-                    isDark ? "text-gray-500" : "text-gray-400"
-                  }`}
-                >
-                  绘制或上传 → 生成 → 自动保存
+                <div className={`mt-3 ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                  {status === "streaming" ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-center gap-2 text-[11px] font-mono">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>AI 正在生成代码...</span>
+                        <span className="text-blue-400">{lastMessage && lastMessage.role === "assistant" ? `${((lastMessage.parts?.filter((p: any) => p.type === "text").reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) / 4000) * 100).toFixed(0)}%` : "0%"}</span>
+                      </div>
+                      <div className="w-full max-w-xs mx-auto h-1 rounded-full overflow-hidden bg-white/10">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
+                          style={{
+                            width: lastMessage && lastMessage.role === "assistant"
+                              ? `${Math.min(95, (lastMessage.parts?.filter((p: any) => p.type === "text").reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) / 4000) * 100)}%`
+                              : "0%"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-center font-mono">绘制或上传 → 生成 → 自动保存</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1223,6 +1256,24 @@ export default function EditorPage() {
                     )}
                     {copied ? "已复制！" : "复制"}
                   </button>
+                  {fileNameList.length > 1 && (
+                  <button
+                    onClick={handleCopyAllCode}
+                    className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
+                      isDark
+                        ? "text-gray-400 hover:text-white hover:bg-white/5"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
+                    title="复制所有文件代码"
+                  >
+                    {copiedAll ? (
+                      <Check className="w-3 h-3 text-green-400" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                    {copiedAll ? "已复制全部！" : "复制全部"}
+                  </button>
+                  )}
                   <button
                     onClick={handleDownloadCode}
                     className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
