@@ -7,7 +7,8 @@ import {
   useSandpack,
   type SandpackPredefinedTemplate
 } from "@codesandbox/sandpack-react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, AlertCircle, Monitor, Tablet, Smartphone } from "lucide-react";
 import type { Framework } from "@/lib/frameworks";
 import { getFrameworkConfig } from "@/lib/frameworks";
 
@@ -62,9 +63,25 @@ function StatusOverlay() {
   return null;
 }
 
+type ViewMode = "desktop" | "tablet" | "mobile";
+
+const VIEW_MODES: { id: ViewMode; icon: typeof Monitor; label: string; width: string }[] = [
+  { id: "desktop", icon: Monitor, label: "桌面端", width: "100%" },
+  { id: "tablet", icon: Tablet, label: "平板端", width: "768px" },
+  { id: "mobile", icon: Smartphone, label: "移动端", width: "375px" },
+];
+
 export function PreviewMode({ files, isDark, framework = "react" }: PreviewModeProps) {
   const fwConfig = getFrameworkConfig(framework);
   const template = (fwConfig?.sandpackTemplate || "react") as SandpackPredefinedTemplate;
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "desktop";
+    return (localStorage.getItem("sketch-view-mode") as ViewMode) || "desktop";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sketch-view-mode", viewMode);
+  }, [viewMode]);
 
   // For miniprogram: convert WXML files to HTML for preview
   let previewFiles = { ...files };
@@ -109,40 +126,76 @@ ${convertWxmlToHtml(content)}
   // For miniprogram and html, use vanilla template with no deps
   const isVanilla = framework === "miniprogram" || framework === "html";
 
+  const currentWidth = VIEW_MODES.find((m) => m.id === viewMode)?.width || "100%";
+
   return (
-    <div className="h-full w-full relative group">
-      <SandpackProvider
-        template={template}
-        theme={isDark ? "dark" : "light"}
-        files={previewFiles}
-        options={{
-          externalResources: isVanilla ? ["https://cdn.tailwindcss.com"] : ["https://cdn.tailwindcss.com"],
-          initMode: "user-visible", 
-          recompileMode: "delayed",
-          recompileDelay: 300,
-        }}
-        customSetup={
-          !isVanilla
-            ? { dependencies }
-            : undefined
-        }
-      >
-        <SandpackLayout style={{ 
-          height: "100%", 
-          border: "none", 
-          borderRadius: 0,
-          display: "block"
-        }}>
-          <div className="relative h-full w-full">
-            <StatusOverlay />
-            <SandpackPreview 
-              style={{ height: "100%" }} 
-              showOpenInCodeSandbox={false} 
-              showRefreshButton={true}
-            />
-          </div>
-        </SandpackLayout>
-      </SandpackProvider>
+    <div className="h-full w-full flex flex-col relative group">
+      {/* Responsive toggle bar */}
+      <div className={`flex items-center justify-center gap-1 p-2 border-b shrink-0 transition-colors ${isDark ? "bg-black/40 border-white/10" : "bg-gray-50 border-gray-200"}`}>
+        {VIEW_MODES.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            onClick={() => setViewMode(id)}
+            title={label}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              viewMode === id
+                ? isDark
+                  ? "bg-white/15 text-white shadow-sm"
+                  : "bg-gray-900 text-white shadow-sm"
+                : isDark
+                  ? "text-gray-400 hover:text-white hover:bg-white/5"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+      {/* Preview wrapper with responsive width */}
+      <div className="flex-1 overflow-auto flex justify-center transition-all duration-300">
+        <div
+          className="h-full transition-all duration-300 ease-in-out"
+          style={{
+            width: currentWidth,
+            maxWidth: "100%",
+            minWidth: viewMode === "mobile" ? "375px" : undefined,
+          }}
+        >
+          <SandpackProvider
+            template={template}
+            theme={isDark ? "dark" : "light"}
+            files={previewFiles}
+            options={{
+              externalResources: ["https://cdn.tailwindcss.com"],
+              initMode: "user-visible", 
+              recompileMode: "delayed",
+              recompileDelay: 300,
+            }}
+            customSetup={
+              !isVanilla
+                ? { dependencies }
+                : undefined
+            }
+          >
+            <SandpackLayout style={{ 
+              height: "100%", 
+              border: "none", 
+              borderRadius: 0,
+              display: "block"
+            }}>
+              <div className="relative h-full w-full">
+                <StatusOverlay />
+                <SandpackPreview 
+                  style={{ height: "100%" }} 
+                  showOpenInCodeSandbox={false} 
+                  showRefreshButton={true}
+                />
+              </div>
+            </SandpackLayout>
+          </SandpackProvider>
+        </div>
+      </div>
     </div>
   );
 }

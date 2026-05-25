@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Panel, Group, Separator } from "react-resizable-panels";
 import type { Editor as TldrawEditor } from "tldraw";
+import JSZip from "jszip";
 import {
   Loader2,
   Code2,
@@ -28,6 +29,7 @@ import {
   Home,
   Upload,
   ImagePlus,
+  Package,
 } from "lucide-react";
 import { getDB, createVersion } from "@/lib/db";
 import { parseGeneratedFiles } from "@/lib/parse-files";
@@ -499,6 +501,28 @@ export default function EditorPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [generatedFiles, activeFile, generatedCode]);
+
+  const handleDownloadAll = useCallback(async () => {
+    if (Object.keys(generatedFiles).length === 0) return;
+    try {
+      const zip = new JSZip();
+      for (const [filePath, content] of Object.entries(generatedFiles)) {
+        const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+        zip.file(cleanPath, content);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${projectName || "project"}-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("打包下载失败");
+    }
+  }, [generatedFiles, projectName]);
 
   // 快捷键支持 + 粘贴图片
   useEffect(() => {
@@ -1116,6 +1140,19 @@ export default function EditorPage() {
                   {(generatedCode.length / 1024).toFixed(1)} KB
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadAll}
+                    className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
+                      isDark
+                        ? "text-gray-400 hover:text-white hover:bg-white/5"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`
+                  }
+                  title="打包下载所有文件"
+                  >
+                    <Package className="w-3 h-3" />
+                    打包下载
+                  </button>
                   <button
                     onClick={handleCopyCode}
                     className={`text-xs transition-colors flex items-center gap-1 px-2 py-1 rounded ${
