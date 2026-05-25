@@ -4,7 +4,8 @@ import {
   SandpackProvider, 
   SandpackLayout, 
   SandpackPreview, 
-  useSandpack 
+  useSandpack,
+  type SandpackPredefinedTemplate
 } from "@codesandbox/sandpack-react";
 import { Loader2, AlertCircle } from "lucide-react";
 import type { Framework } from "@/lib/frameworks";
@@ -63,7 +64,7 @@ function StatusOverlay() {
 
 export function PreviewMode({ files, isDark, framework = "react" }: PreviewModeProps) {
   const fwConfig = getFrameworkConfig(framework);
-  const template = fwConfig?.sandpackTemplate || "react";
+  const template = (fwConfig?.sandpackTemplate || "react") as SandpackPredefinedTemplate;
 
   // For miniprogram: convert WXML files to HTML for preview
   let previewFiles = { ...files };

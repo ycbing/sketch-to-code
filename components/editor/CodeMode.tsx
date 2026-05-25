@@ -3,7 +3,8 @@
 import { 
   SandpackProvider, 
   SandpackLayout, 
-  SandpackCodeEditor 
+  SandpackCodeEditor,
+  type SandpackPredefinedTemplate
 } from "@codesandbox/sandpack-react";
 import type { Framework } from "@/lib/frameworks";
 import { getFrameworkConfig } from "@/lib/frameworks";
@@ -18,7 +19,7 @@ interface CodeModeProps {
 
 export function CodeMode({ files, activeFile, isDark, framework = "react", readOnly = false }: CodeModeProps) {
   const fwConfig = getFrameworkConfig(framework);
-  const template = fwConfig?.sandpackTemplate || "react";
+  const template = (fwConfig?.sandpackTemplate || "react") as SandpackPredefinedTemplate;
 
   return (
     <div className="h-full w-full">

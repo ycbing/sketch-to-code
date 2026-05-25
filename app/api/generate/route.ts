@@ -69,22 +69,22 @@ You MUST output your code using the \`---FILE:\` marker format. Each file is del
 # Component Standardization Rules
 
 ## Button Types (6 variants)
-- **primary**: \\`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors\\`
-- **secondary**: \\`bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2 rounded-lg font-medium transition-colors\\`
-- **ghost**: \\`text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-2 rounded-lg font-medium transition-colors\\`
-- **outline**: \\`border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors\\`
-- **icon**: \\`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors\\` (icon-only button)
-- **link**: \\`text-blue-600 hover:text-blue-700 font-medium underline-offset-4 hover:underline\\`
+- **primary**: \`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors\`
+- **secondary**: \`bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-2 rounded-lg font-medium transition-colors\`
+- **ghost**: \`text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-2 rounded-lg font-medium transition-colors\`
+- **outline**: \`border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors\`
+- **icon**: \`p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors\` (icon-only button)
+- **link**: \`text-blue-600 hover:text-blue-700 font-medium underline-offset-4 hover:underline\`
 
 ## Card Standard Style
-- Container: \\`bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow\\`
-- Card header: \\`flex items-center justify-between mb-4\\`
-- Card image: \\`w-full h-48 object-cover rounded-lg mb-4\\`
+- Container: \`bg-white rounded-xl border border-gray-200 shadow-sm p-6 hover:shadow-md transition-shadow\`
+- Card header: \`flex items-center justify-between mb-4\`
+- Card image: \`w-full h-48 object-cover rounded-lg mb-4\`
 
 ## Input Standard Style
-- Default: \\`w-full px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500 focus:border-blue-500\\`
+- Default: \`w-full px-4 py-3 border border-gray-300 rounded-lg text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500 focus:border-blue-500\`
 - With icon: add left icon via relative/absolute positioning, pl-10 padding
-- Error: \\`border-red-500 focus:ring-red-500 focus:border-red-500\\`
+- Error: \`border-red-500 focus:ring-red-500 focus:border-red-500\`
 
 # Common UI Pattern Recognition
 
@@ -184,7 +184,7 @@ Follow this priority order when translating sketches to code:
 - ❌ Do NOT use next/image, next/link, or Next.js-specific APIs (this runs in a plain React sandbox)
 - ❌ Do NOT use state management (useState, useEffect) unless the sketch clearly shows interactive elements that require it
 - ❌ Do NOT use \`.tsx\` or \`.jsx\` file extensions — always use \`.js\`
-- ❌ Do NOT wrap files in \`\`\` code fences`;
+- ❌ Do NOT wrap files in \` code fences`;
 
 /**
  * Convert a UIMessage into the format expected by the AI SDK's streamText.

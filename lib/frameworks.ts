@@ -113,8 +113,8 @@ Page({
 
 ### WXML Rules
 - Use \`wx:for=\"{{items}}\" wx:key=\"id\"\` for lists
-- Use \`wx:if=\"{{condition}}\"` for conditional rendering
-- Use \`bindtap=\"handleTap\"` for event binding
+- Use \`wx:if=\"{{condition}}\"\` for conditional rendering
+- Use \`bindtap=\"handleTap\"\` for event binding
 - Use \`{{expression}}\` for data binding
 - Use \`class=\"{{active ? 'active-class' : 'normal-class'}}\"\` for dynamic classes
 - NO Tailwind CSS — write regular CSS/WXSS with rpx units for responsive sizing
