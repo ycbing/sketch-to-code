@@ -31,7 +31,10 @@ import {
   ImagePlus,
   Package,
   Share2,
+  Coins,
+  LogOut,
 } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 import { getDB, createVersion, shareProject, unshareProject } from "@/lib/db";
 import { parseGeneratedFiles } from "@/lib/parse-files";
 
@@ -81,7 +84,21 @@ export default function EditorPage() {
   const [isGeneratingFromTemplate, setIsGeneratingFromTemplate] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
+
+  // Fetch user credits
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch("/api/credits")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.credits !== undefined) setCredits(data.credits);
+        })
+        .catch(() => {});
+    }
+  }, [session?.user?.id]);
 
   // 从 localStorage 加载主题偏好
   useEffect(() => {
@@ -265,6 +282,18 @@ export default function EditorPage() {
     }
     return {};
   }, [lastMessage]);
+
+  // Refresh credits after generation completes
+  useEffect(() => {
+    if (generatedCode && generatedCode !== codeHistory[codeHistory.length - 1]?.code) {
+      fetch("/api/credits")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.credits !== undefined) setCredits(data.credits);
+        })
+        .catch(() => {});
+    }
+  }, [generatedCode, codeHistory]);
 
   const fileNameList = useMemo(() => Object.keys(generatedFiles), [generatedFiles]);
   const [activeFile, setActiveFile] = useState<string>("/App.js");
@@ -464,6 +493,12 @@ export default function EditorPage() {
     if (status === "streaming") return; // 防止重复点击
     setError(null);
 
+    // Check credits (only for authenticated users)
+    if (session?.user?.id && credits !== null && credits < 20) {
+      setError("积分不足，请升级套餐");
+      return;
+    }
+
     // Priority: uploaded image > canvas screenshot
     let image: string | null = uploadedImage;
     let source = uploadedImage ? "uploaded" : "canvas";
@@ -504,8 +539,22 @@ export default function EditorPage() {
       ],
     });
 
+    // Deduct credits after successfully sending
+    if (session?.user?.id && credits !== null) {
+      fetch("/api/credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: -20, reason: "生成代码" }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.credits !== undefined) setCredits(data.credits);
+        })
+        .catch(() => {});
+    }
+
     setActiveTab("preview");
-  }, [uploadedImage, getCanvasImage, sendMessage, error]);
+  }, [uploadedImage, getCanvasImage, sendMessage, error, session?.user?.id, credits]);
 
   const handleCopyCode = useCallback(async () => {
     const code = generatedFiles[activeFile] || generatedCode;
@@ -771,6 +820,44 @@ export default function EditorPage() {
               <Moon className="w-4 h-4" />
             )}
           </button>
+          {/* Credits display */}
+          {session?.user && credits !== null && (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                credits < 20
+                  ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                  : isDark
+                    ? "bg-white/10 text-gray-300"
+                    : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5" />
+              <span>{credits}</span>
+            </div>
+          )}
+          {/* User info & logout */}
+          {session?.user && (
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs ${
+                  isDark ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                {session.user.name || session.user.email}
+              </span>
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  isDark
+                    ? "hover:bg-white/10 text-gray-500 hover:text-white"
+                    : "hover:bg-gray-200 text-gray-400 hover:text-gray-700"
+                }`}
+                title="退出登录"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           <div
             className={`text-xs flex items-center gap-2 ${
               isDark ? "text-gray-400" : "text-gray-600"

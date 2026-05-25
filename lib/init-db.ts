@@ -29,6 +29,23 @@ export function initDatabase() {
       requirements TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      name TEXT,
+      credits INTEGER NOT NULL DEFAULT 200,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS credits_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      reason TEXT,
+      created_at TEXT NOT NULL
+    );
   `);
 
   console.log("[DB] SQLite tables ready");
