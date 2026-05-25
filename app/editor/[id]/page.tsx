@@ -30,8 +30,9 @@ import {
   Upload,
   ImagePlus,
   Package,
+  Share2,
 } from "lucide-react";
-import { getDB, createVersion } from "@/lib/db";
+import { getDB, createVersion, shareProject, unshareProject } from "@/lib/db";
 import { parseGeneratedFiles } from "@/lib/parse-files";
 
 // 动态导入重型组件，优化初始加载
@@ -78,6 +79,8 @@ export default function EditorPage() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isGeneratingFromTemplate, setIsGeneratingFromTemplate] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 从 localStorage 加载主题偏好
@@ -116,6 +119,9 @@ export default function EditorPage() {
         const project = await db.get("projects", projectId);
         if (project) {
           setProjectName(project.name);
+          if (project.shareToken) {
+            setShareUrl(`/share/${project.shareToken}`);
+          }
         } else {
           router.push("/dashboard");
         }
@@ -125,6 +131,34 @@ export default function EditorPage() {
     };
     loadProject();
   }, [projectId, router]);
+
+  // 分享/取消分享
+  const handleShare = useCallback(async () => {
+    if (shareUrl) {
+      // 已分享 → 复制链接
+      try {
+        await navigator.clipboard.writeText(window.location.origin + shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        setError("复制链接失败");
+      }
+      return;
+    }
+    setShareLoading(true);
+    try {
+      const token = await shareProject(projectId);
+      const url = `/share/${token}`;
+      setShareUrl(url);
+      await navigator.clipboard.writeText(window.location.origin + url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("分享失败，请重试");
+    } finally {
+      setShareLoading(false);
+    }
+  }, [shareUrl, projectId]);
 
   // --- Vercel AI SDK ---
   // 从 localStorage 加载 AI 配置
@@ -683,6 +717,27 @@ export default function EditorPage() {
           >
             <History className="w-3 h-3" />
             历史 ({codeHistory.length})
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={shareLoading}
+            className={`text-xs transition-colors flex items-center gap-1 ${
+              shareUrl
+                ? isDark
+                  ? "text-green-400 hover:text-green-300"
+                  : "text-green-600 hover:text-green-700"
+                : isDark
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-600 hover:text-gray-900"
+            } ${shareLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            title={shareUrl ? "复制分享链接" : "分享项目"}
+          >
+            {shareLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Share2 className="w-3 h-3" />
+            )}
+            {shareUrl ? (copied ? "已复制！" : "已分享") : "分享"}
           </button>
           <button
             onClick={toggleTheme}

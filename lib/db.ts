@@ -15,8 +15,9 @@ interface SketchDB extends DBSchema {
       description?: string;
       createdAt: number;
       updatedAt: number;
+      shareToken?: string;
     };
-    indexes: { "by-updated": number };
+    indexes: { "by-updated": number; "by-share-token": string };
   };
   versions: {
     key: string;
@@ -39,11 +40,14 @@ let db: IDBPDatabase<SketchDB> | null = null;
 export async function getDB() {
   if (db) return db;
 
-  db = await openDB<SketchDB>("sketch-to-react", 1, {
-    upgrade(db) {
+  db = await openDB<SketchDB>("sketch-to-react", 2, {
+    upgrade(db, oldVersion) {
       // 项目表
       const projectStore = db.createObjectStore("projects", { keyPath: "id" });
       projectStore.createIndex("by-updated", "updatedAt");
+      if (oldVersion < 2) {
+        projectStore.createIndex("by-share-token", "shareToken");
+      }
 
       // 版本表
       const versionStore = db.createObjectStore("versions", { keyPath: "id" });
@@ -189,6 +193,48 @@ export async function getVersion(id: string) {
 export async function deleteVersion(id: string) {
   const db = await getDB();
   await db.delete("versions", id);
+}
+
+// ──────────────────────────────────────────────
+// 分享操作
+// ──────────────────────────────────────────────
+
+export async function shareProject(projectId: string): Promise<string> {
+  const token = nanoid(16);
+
+  // 1. 更新 IndexedDB
+  const db = await getDB();
+  const project = await db.get("projects", projectId);
+  if (project) {
+    await db.put("projects", { ...project, shareToken: token });
+  }
+
+  // 2. 更新服务端
+  apiFetch(`/api/projects/${projectId}/share`, {
+    method: "POST",
+  });
+
+  return token;
+}
+
+export async function unshareProject(projectId: string) {
+  // 1. 更新 IndexedDB
+  const db = await getDB();
+  const project = await db.get("projects", projectId);
+  if (project) {
+    await db.put("projects", { ...project, shareToken: undefined });
+  }
+
+  // 2. 更新服务端
+  apiFetch(`/api/projects/${projectId}/share`, {
+    method: "DELETE",
+  });
+}
+
+export async function getSharedProjects() {
+  const db = await getDB();
+  const allProjects = await db.getAllFromIndex("projects", "by-updated");
+  return allProjects.filter((p) => p.shareToken);
 }
 
 // ──────────────────────────────────────────────

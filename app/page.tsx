@@ -23,6 +23,12 @@ export default function LandingPage() {
               功能特性
             </Link>
             <Link
+              href="/gallery"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              Gallery
+            </Link>
+            <Link
               href="/dashboard"
               className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-2"
             >

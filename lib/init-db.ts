@@ -14,6 +14,7 @@ export function initDatabase() {
       name TEXT NOT NULL,
       description TEXT,
       user_id TEXT NOT NULL DEFAULT 'default-user',
+      share_token TEXT UNIQUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
