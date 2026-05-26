@@ -373,7 +373,14 @@ export async function POST(req: Request) {
       creditsDeducted = true;
     }
 
-    const { messages } = await req.json();
+    const body = await req.json();
+    const { messages } = body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "messages 参数缺失或格式不正确" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
 
     const frameworkHeader = req.headers.get("x-framework") || "react";
 
@@ -459,7 +466,7 @@ export async function POST(req: Request) {
     };
 
     // Convert all messages (history) for the AI model
-    const conversationMessages = messages.map(convertMessage);
+    const conversationMessages = messages.map(convertMessage) as any;
 
     const streamResult = await withRetry(() => {
       return Promise.resolve(

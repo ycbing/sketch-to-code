@@ -39,16 +39,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const now = new Date();
     await db.insert(projects).values({
       id,
       name,
       description: description ?? null,
       userId: "default-user",
-      createdAt: new Date(createdAt).toISOString(),
-      updatedAt: new Date(updatedAt).toISOString(),
+      createdAt: createdAt ? new Date(createdAt).toISOString() : now.toISOString(),
+      updatedAt: updatedAt ? new Date(updatedAt).toISOString() : now.toISOString(),
     });
 
-    return NextResponse.json({ id, name, description, createdAt, updatedAt }, { status: 201 });
+    return NextResponse.json({ id, name, description, createdAt: createdAt || now.toISOString(), updatedAt: updatedAt || now.toISOString() }, { status: 201 });
   } catch (error) {
     console.error("POST /api/projects error:", error);
     return NextResponse.json(

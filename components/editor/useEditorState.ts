@@ -119,7 +119,7 @@ export function useEditorState(framework: Framework) {
           const { files: parsed } = parseGeneratedFiles(lastPart.text);
           const code = parsed["/App.js"] || parsed["/App.tsx"] || Object.values(parsed)[0] || lastPart.text.trim();
           if (code) {
-            entries.push({ code, timestamp: msg.createdAt ? new Date(msg.createdAt).getTime() : entries.length });
+            entries.push({ code, timestamp: entries.length });
           }
         }
       } catch { /* skip unparseable messages */ }
