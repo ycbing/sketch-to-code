@@ -22,11 +22,6 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system";
   return (localStorage.getItem("theme") as Theme) || "system";
