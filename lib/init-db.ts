@@ -36,7 +36,11 @@ export function initDatabase() {
       password TEXT NOT NULL,
       name TEXT,
       credits INTEGER NOT NULL DEFAULT 200,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      ai_provider TEXT,
+      ai_api_key TEXT,
+      ai_base_url TEXT,
+      ai_model TEXT
     );
 
     CREATE TABLE IF NOT EXISTS credits_log (
@@ -47,6 +51,22 @@ export function initDatabase() {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Migration: add AI config columns if missing
+  const userCols = sqlite.pragma("table_info(users)") as Array<{ name: string }>;
+  const colNames = userCols.map((c) => c.name);
+  if (!colNames.includes("ai_provider")) {
+    sqlite.exec(`ALTER TABLE users ADD COLUMN ai_provider TEXT;`);
+  }
+  if (!colNames.includes("ai_api_key")) {
+    sqlite.exec(`ALTER TABLE users ADD COLUMN ai_api_key TEXT;`);
+  }
+  if (!colNames.includes("ai_base_url")) {
+    sqlite.exec(`ALTER TABLE users ADD COLUMN ai_base_url TEXT;`);
+  }
+  if (!colNames.includes("ai_model")) {
+    sqlite.exec(`ALTER TABLE users ADD COLUMN ai_model TEXT;`);
+  }
 
   console.log("[DB] SQLite tables ready");
   sqlite.close();

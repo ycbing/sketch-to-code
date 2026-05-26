@@ -59,19 +59,6 @@ export default function SharePage() {
         }
         const data = await res.json();
         setProject(data);
-        // Parse files from code
-        if (data.latestVersion?.generatedCode) {
-          try {
-            const { parseGeneratedFiles } = await import("@/lib/parse-files");
-            const { files } = parseGeneratedFiles(data.latestVersion.generatedCode);
-            const fileNames = Object.keys(files);
-            if (fileNames.length > 0) {
-              setActiveFile(fileNames[0]);
-            }
-          } catch {
-            // Use raw code as single file
-          }
-        }
       } catch {
         setError("加载项目失败，请重试");
       } finally {
@@ -81,34 +68,22 @@ export default function SharePage() {
     loadProject();
   }, [token]);
 
-  // Parse generated code into files map
-  const parsedFiles = useState<Record<string, string>>({})[0];
+  const [files, setFiles] = useState<Record<string, string>>({});
 
-  const files = project?.latestVersion?.generatedCode
-    ? (() => {
-        try {
-          // Dynamic import won't work in render, use simple heuristic
-          const code = project.latestVersion.generatedCode;
-          const fileMatch = code.match(/File:\s*`([^`]+)`/g);
-          if (fileMatch && fileMatch.length > 1) {
-            const result: Record<string, string> = {};
-            for (const match of fileMatch) {
-              const path = match.match(/File:\s*`([^`]+)`/)?.[1];
-              const startIdx = code.indexOf(match);
-              const nextFile = code.indexOf("File: `", startIdx + match.length);
-              const content = code.slice(startIdx + match.length, nextFile === -1 ? undefined : nextFile).trim();
-              if (path) result[path] = content;
-            }
-            if (Object.keys(result).length > 0) return result;
-          }
-          // Fallback: single file
-          const mainFile = "/App.js";
-          return { [mainFile]: code };
-        } catch {
-          return { "/App.js": project.latestVersion.generatedCode };
+  useEffect(() => {
+    if (project?.latestVersion?.generatedCode) {
+      import("@/lib/parse-files").then(({ parseGeneratedFiles }) => {
+        const { files: parsed } = parseGeneratedFiles(project.latestVersion!.generatedCode);
+        setFiles(parsed);
+        const fileNames = Object.keys(parsed);
+        if (fileNames.length > 0) {
+          setActiveFile(fileNames[0]);
         }
-      })()
-    : parsedFiles;
+      }).catch(() => {
+        setFiles({ "/App.js": project.latestVersion!.generatedCode });
+      });
+    }
+  }, [project?.latestVersion?.generatedCode]);
 
   if (loading) {
     return (

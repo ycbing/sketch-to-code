@@ -48,47 +48,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Use a transaction to ensure atomicity
-    const result = await db
-      .select({ credits: users.credits })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .get();
+    const newCredits = await db.transaction(async (tx) => {
+      const result = await tx
+        .select({ credits: users.credits })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .get();
 
-    if (!result) {
-      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
-    }
+      if (!result) {
+        throw new Error("USER_NOT_FOUND");
+      }
 
-    if (result.credits + amount < 0) {
-      return NextResponse.json(
-        { error: "积分不足", credits: result.credits },
-        { status: 400 },
-      );
-    }
+      if (result.credits + amount < 0) {
+        throw new Error("INSUFFICIENT_CREDITS");
+      }
 
-    // Update credits
-    await db
-      .update(users)
-      .set({ credits: sql`${users.credits} + ${amount}` })
-      .where(eq(users.id, session.user.id));
+      await tx
+        .update(users)
+        .set({ credits: sql`${users.credits} + ${amount}` })
+        .where(eq(users.id, session.user.id));
 
-    // Log the transaction
-    await db.insert(creditsLog).values({
-      id: nanoid(),
-      userId: session.user.id,
-      amount,
-      reason,
-      createdAt: new Date().toISOString(),
+      await tx.insert(creditsLog).values({
+        id: nanoid(),
+        userId: session.user.id,
+        amount,
+        reason,
+        createdAt: new Date().toISOString(),
+      });
+
+      return result.credits + amount;
     });
-
-    const newCredits = result.credits + amount;
 
     return NextResponse.json({
       credits: newCredits,
       amount,
       reason,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "USER_NOT_FOUND") {
+      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+    }
+    if (error?.message === "INSUFFICIENT_CREDITS") {
+      const session = await auth();
+      const user = session?.user?.id
+        ? await db.select({ credits: users.credits }).from(users).where(eq(users.id, session.user.id)).get()
+        : null;
+      return NextResponse.json(
+        { error: "积分不足", credits: user?.credits ?? 0 },
+        { status: 400 },
+      );
+    }
     console.error("Update credits error:", error);
     return NextResponse.json(
       { error: "积分操作失败" },

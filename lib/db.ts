@@ -62,21 +62,32 @@ export async function getDB() {
 // 服务端 API 辅助函数
 // ──────────────────────────────────────────────
 
-async function apiFetch(url: string, options?: RequestInit) {
-  try {
-    const res = await fetch(url, {
-      headers: { "Content-Type": "application/json" },
-      ...options,
-    });
-    if (!res.ok) {
-      console.warn(`Server API ${url} returned ${res.status}`);
+async function apiFetch(url: string, options?: RequestInit, maxRetries = 3): Promise<Response | null> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      if (res.ok) return res;
+
+      console.warn(`Server API ${url} returned ${res.status} (attempt ${attempt + 1}/${maxRetries})`);
+
+      if (res.status >= 400 && res.status < 500) return null;
+
+      if (attempt < maxRetries - 1) {
+        const delay = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    } catch (err) {
+      console.warn(`Server API ${url} unavailable (attempt ${attempt + 1}/${maxRetries}):`, err);
+      if (attempt < maxRetries - 1) {
+        const delay = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+        await new Promise((r) => setTimeout(r, delay));
+      }
     }
-    return res;
-  } catch (err) {
-    // 网络错误不阻塞前端操作，仅打印警告
-    console.warn(`Server API ${url} unavailable:`, err);
-    return null;
   }
+  return null;
 }
 
 // ──────────────────────────────────────────────
@@ -321,5 +332,25 @@ async function syncProjectVersionsFromServer(projectId: string) {
     }
   } catch {
     // 静默失败
+  }
+}
+
+// ──────────────────────────────────────────────
+// 定时后台同步（每 60s）
+// ──────────────────────────────────────────────
+
+let syncIntervalId: ReturnType<typeof setInterval> | null = null;
+
+export function startPeriodicSync() {
+  if (syncIntervalId) return;
+  syncIntervalId = setInterval(() => {
+    syncFromServer().catch(() => {});
+  }, 60_000);
+}
+
+export function stopPeriodicSync() {
+  if (syncIntervalId) {
+    clearInterval(syncIntervalId);
+    syncIntervalId = null;
   }
 }

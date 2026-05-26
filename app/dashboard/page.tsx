@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Trash2, Clock, Sparkles, ArrowRight, Home, X, Loader2, Settings, LayoutTemplate } from "lucide-react";
-import { getAllProjects, deleteProject, createProject } from "@/lib/db";
+import { getAllProjects, deleteProject, createProject, startPeriodicSync, stopPeriodicSync } from "@/lib/db";
 import type { Project } from "@/lib/types";
 import { TEMPLATES, TEMPLATE_CATEGORIES, type CategoryConfig } from "@/lib/templates";
 
@@ -20,6 +20,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadProjects();
+    startPeriodicSync();
+    return () => stopPeriodicSync();
   }, []);
 
   const loadProjects = async () => {

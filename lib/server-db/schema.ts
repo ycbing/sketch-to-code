@@ -11,6 +11,10 @@ export const users = sqliteTable("users", {
   name: text("name"),
   credits: integer("credits").notNull().default(200),
   createdAt: text("created_at").notNull(),
+  aiProvider: text("ai_provider"),
+  aiApiKey: text("ai_api_key"),
+  aiBaseURL: text("ai_base_url"),
+  aiModel: text("ai_model"),
 });
 
 // ----------------------------------------------------------------------

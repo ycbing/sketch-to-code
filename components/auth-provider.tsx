@@ -17,14 +17,11 @@ function isPublicPath(pathname: string): boolean {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
   const isPublic = isPublicPath(pathname);
+  const [checked, setChecked] = useState(isPublic);
 
   useEffect(() => {
-    if (isPublic) {
-      setChecked(true);
-      return;
-    }
+    if (isPublic) return;
 
     // Check session for protected routes
     fetch("/api/auth/session")

@@ -1,0 +1,181 @@
+"use client";
+
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { parseGeneratedFiles } from "@/lib/parse-files";
+import type { Framework } from "@/lib/frameworks";
+import { FRAMEWORK_CONFIGS } from "@/lib/frameworks";
+
+type Theme = "light" | "dark";
+type TabType = "preview" | "code";
+
+interface CodeVersion {
+  code: string;
+  timestamp: number;
+  description?: string;
+}
+
+export function useEditorState(framework: Framework) {
+  const [input, setInput] = useState("");
+  const [activeTab, setActiveTab] = useState<TabType>("preview");
+  const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as Theme | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+      setTheme("light");
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const newTheme = prev === "dark" ? "light" : "dark";
+      localStorage.setItem("theme", newTheme);
+      return newTheme;
+    });
+  }, []);
+
+  const {
+    messages,
+    sendMessage,
+    status,
+    error: chatError,
+    stop,
+  } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/generate",
+      headers: () => {
+        const hdrs: Record<string, string> = {};
+        hdrs["x-framework"] = framework;
+        return hdrs;
+      },
+    }),
+  });
+
+  const lastMessage = useMemo(() => {
+    return messages[messages.length - 1];
+  }, [messages]);
+
+  const generatedCode = useMemo(() => {
+    if (lastMessage?.role !== "assistant" || !lastMessage?.parts) return "";
+    try {
+      const lastPart = lastMessage.parts[lastMessage.parts.length - 1];
+      if (lastPart?.type === "text") {
+        const text = lastPart.text;
+        const { files: parsed } = parseGeneratedFiles(text);
+        return (
+          parsed["/App.js"] ||
+          parsed["/App.tsx"] ||
+          Object.values(parsed)[0] ||
+          text.trim()
+        );
+      }
+    } catch (err) {
+      console.error("Failed to parse generated code:", err);
+      return "";
+    }
+    return "";
+  }, [lastMessage]);
+
+  const generatedFiles = useMemo<Record<string, string>>(() => {
+    if (lastMessage?.role !== "assistant" || !lastMessage?.parts) return {};
+    try {
+      const lastPart = lastMessage.parts[lastMessage.parts.length - 1];
+      if (lastPart?.type === "text") {
+        const { files } = parseGeneratedFiles(lastPart.text);
+        return files;
+      }
+    } catch (err) {
+      console.error("Failed to parse files:", err);
+    }
+    return {};
+  }, [lastMessage]);
+
+  const [activeFile, setActiveFile] = useState<string>("/App.js");
+  const [codeHistory, setCodeHistory] = useState<CodeVersion[]>([]);
+
+  const fileNameList = useMemo(
+    () => Object.keys(generatedFiles),
+    [generatedFiles],
+  );
+
+  const updateActiveFile = useCallback(
+    (files: Record<string, string>, current: string) => {
+      const names = Object.keys(files);
+      if (names.length > 0 && !names.includes(current)) {
+        return names[0];
+      }
+      return current;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const updated = updateActiveFile(generatedFiles, activeFile);
+    if (updated !== activeFile) setActiveFile(updated);
+  }, [generatedFiles, activeFile, updateActiveFile]);
+
+  useEffect(() => {
+    if (
+      generatedCode &&
+      generatedCode !== codeHistory[codeHistory.length - 1]?.code
+    ) {
+      setCodeHistory((prev) => [
+        ...prev.slice(-9),
+        { code: generatedCode, timestamp: Date.now() },
+      ]);
+    }
+  }, [generatedCode, codeHistory]);
+
+  const isDark = theme === "dark";
+
+  return {
+    input,
+    setInput,
+    activeTab,
+    setActiveTab,
+    copied,
+    setCopied,
+    showHistory,
+    setShowHistory,
+    codeHistory,
+    setCodeHistory,
+    error,
+    setError,
+    showKeyboardShortcuts,
+    setShowKeyboardShortcuts,
+    theme,
+    toggleTheme,
+    isDark,
+    uploadedImage,
+    setUploadedImage,
+    isDragging,
+    setIsDragging,
+    copiedAll,
+    setCopiedAll,
+    activeFile,
+    setActiveFile,
+    fileNameList,
+    generatedCode,
+    generatedFiles,
+    messages,
+    sendMessage,
+    status,
+    chatError,
+    stop,
+  };
+}

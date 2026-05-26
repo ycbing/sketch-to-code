@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server, Loader2 } from "lucide-react";
 import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
 
 interface AIModelConfig {
@@ -46,22 +47,49 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
 
   useEffect(() => {
-    // 从 localStorage 加载配置
-    const savedConfig = localStorage.getItem("ai-model-config");
-    if (savedConfig) {
-      try {
-        setConfig(JSON.parse(savedConfig));
-      } catch (err) {
-        console.error("Failed to parse saved config:", err);
+    async function loadConfig() {
+      // Try server-side config first (authenticated user)
+      if (session?.user?.id) {
+        try {
+          const res = await fetch("/api/ai-config");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.provider) {
+              setConfig({
+                provider: data.provider,
+                apiKey: "",
+                baseURL: data.baseURL || DEFAULT_CONFIGS[data.provider]?.baseURL || "",
+                model: data.model || DEFAULT_CONFIGS[data.provider]?.model || "",
+              });
+            }
+          }
+        } catch {
+          // Fallback to localStorage
+        }
       }
+
+      // Fallback to localStorage for non-authenticated or if server failed
+      const savedConfig = localStorage.getItem("ai-model-config");
+      if (savedConfig && !session?.user?.id) {
+        try {
+          setConfig(JSON.parse(savedConfig));
+        } catch (err) {
+          console.error("Failed to parse saved config:", err);
+        }
+      }
+
+      const savedFramework = localStorage.getItem("sketch-framework") as Framework | null;
+      if (savedFramework) {
+        setDefaultFramework(savedFramework);
+      }
+      setLoading(false);
     }
-    const savedFramework = localStorage.getItem("sketch-framework") as Framework | null;
-    if (savedFramework) {
-      setDefaultFramework(savedFramework);
-    }
-  }, []);
+    loadConfig();
+  }, [session?.user?.id]);
 
   const handleProviderChange = (provider: "openai" | "anthropic" | "zhipu" | "siliconflow") => {
     const defaultConfig = DEFAULT_CONFIGS[provider];
@@ -73,12 +101,36 @@ export default function SettingsPage() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!config.apiKey.trim()) {
       setError("请输入 API Key");
       return;
     }
 
+    // Save to server if authenticated
+    if (session?.user?.id) {
+      try {
+        const res = await fetch("/api/ai-config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider: config.provider,
+            apiKey: config.apiKey,
+            baseURL: config.baseURL,
+            model: config.model,
+          }),
+        });
+        if (!res.ok) {
+          setError("保存到服务器失败");
+          return;
+        }
+      } catch {
+        setError("网络错误，请重试");
+        return;
+      }
+    }
+
+    // Also save to localStorage as fallback
     localStorage.setItem("ai-model-config", JSON.stringify(config));
     localStorage.setItem("sketch-framework", defaultFramework);
     setSaved(true);

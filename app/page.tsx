@@ -1,23 +1,23 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles, Code2, Zap, ImagePlus, Layers, Share2, Monitor, Tablet, Smartphone, Star, Quote } from "lucide-react";
+import { ArrowRight, Sparkles, Code2, Zap, ImagePlus, Layers, Share2, Monitor, Tablet, Smartphone, Quote } from "lucide-react";
 
 const STATS = [
-  { value: "10,000+", label: "活跃用户", suffix: "" },
-  { value: "50,000+", label: "生成项目", suffix: "" },
-  { value: "99.9%", label: "服务可用性", suffix: "" },
-  { value: "4.9", label: "用户评分", suffix: "/5" },
+  { value: "免费", label: "开始使用", suffix: "" },
+  { value: "4", label: "支持框架", suffix: "种" },
+  { value: "AI", label: "代码生成", suffix: "" },
+  { value: "∞", label: "创意可能", suffix: "" },
 ];
 
 const TESTIMONIALS = [
   {
     name: "张小明",
-    role: "前端工程师 @ 字节跳动",
+    role: "前端工程师",
     content: "从手绘线框到可运行的代码，只需几秒钟。这个工具彻底改变了我的原型开发流程。",
     color: "from-blue-500 to-cyan-500",
   },
   {
     name: "李文静",
-    role: "UI 设计师 @ 蚂蚁集团",
+    role: "UI 设计师",
     content: "作为设计师，我终于可以直接把截图变成代码给开发看了。再也不用手动标注每个间距和颜色了。",
     color: "from-purple-500 to-pink-500",
   },
@@ -229,13 +229,9 @@ export default function LandingPage() {
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]"></div>
           <div className="relative">
-            <div className="flex items-center justify-center gap-1 mb-4">
-              {[1,2,3,4,5].map(i => <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />)}
-              <span className="ml-2 text-sm text-blue-100">4.9/5 用户评分</span>
-            </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">准备好加速构建了吗？</h2>
             <p className="text-lg text-blue-100 mb-8 max-w-2xl mx-auto">
-              加入 10,000+ 开发者，用 AI 加速你的前端开发流程。免费开始，无需信用卡。
+              用 AI 加速你的前端开发流程。免费开始，无需信用卡。
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <Link href="/register" className="inline-flex items-center gap-2 bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-all shadow-lg">

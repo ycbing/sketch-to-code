@@ -1,13 +1,18 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { nanoid } from "nanoid";
+import GitHub from "next-auth/providers/github";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { db } from "./server-db";
 import { users } from "./server-db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
+    GitHub({
+      clientId: process.env.GITHUB_ID || "",
+      clientSecret: process.env.GITHUB_SECRET || "",
+    }),
     Credentials({
       name: "Credentials",
       credentials: {
@@ -47,13 +52,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "github" && user.email) {
+        const existing = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, user.email))
+          .get();
+
+        if (!existing) {
+          await db.insert(users).values({
+            id: nanoid(),
+            email: user.email,
+            password: await bcrypt.hash(nanoid(32), 10),
+            name: user.name || user.email.split("@")[0],
+            credits: 200,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.userId = user.id;
         token.email = user.email;
         token.name = user.name;
       }
-      // On session update, refresh user data
       if (trigger === "update" && session) {
         token.name = session.name;
         token.email = session.email;

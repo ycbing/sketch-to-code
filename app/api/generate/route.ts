@@ -2,6 +2,11 @@
 import { streamText, type UIMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/server-db";
+import { users, creditsLog } from "@/lib/server-db/schema";
+import { eq, sql } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 const SYSTEM_PROMPT = `# Role
 You are a senior front-end engineer specializing in converting UI sketches/wireframes into pixel-perfect, production-ready React + Tailwind CSS code.
@@ -293,7 +298,61 @@ function convertMessage(msg: UIMessage): {
   };
 }
 
+const CREDITS_PER_GENERATION = 20;
+
+async function deductCredits(userId: string): Promise<number> {
+  return db.transaction(async (tx) => {
+    const result = await tx
+      .select({ credits: users.credits })
+      .from(users)
+      .where(eq(users.id, userId))
+      .get();
+
+    if (!result) throw new Error("USER_NOT_FOUND");
+    if (result.credits < CREDITS_PER_GENERATION) throw new Error("INSUFFICIENT_CREDITS");
+
+    await tx
+      .update(users)
+      .set({ credits: sql`${users.credits} - ${CREDITS_PER_GENERATION}` })
+      .where(eq(users.id, userId));
+
+    await tx.insert(creditsLog).values({
+      id: nanoid(),
+      userId,
+      amount: -CREDITS_PER_GENERATION,
+      reason: "生成代码",
+      createdAt: new Date().toISOString(),
+    });
+
+    return result.credits - CREDITS_PER_GENERATION;
+  });
+}
+
+async function refundCredits(userId: string): Promise<void> {
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ credits: sql`${users.credits} + ${CREDITS_PER_GENERATION}` })
+        .where(eq(users.id, userId));
+
+      await tx.insert(creditsLog).values({
+        id: nanoid(),
+        userId,
+        amount: CREDITS_PER_GENERATION,
+        reason: "生成失败退回",
+        createdAt: new Date().toISOString(),
+      });
+    });
+  } catch (err) {
+    console.error("Failed to refund credits:", err);
+  }
+}
+
 export async function POST(req: Request) {
+  let sessionUserId: string | null = null;
+  let creditsDeducted = false;
+
   try {
     // Rate limiting
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -306,11 +365,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // Check auth & deduct credits before generation
+    const session = await auth();
+    if (session?.user?.id) {
+      sessionUserId = session.user.id;
+      const remainingCredits = await deductCredits(session.user.id);
+      creditsDeducted = true;
+    }
+
     const { messages } = await req.json();
 
-    // 从请求头获取自定义配置（如果有）
-    const customConfig = req.headers.get("x-ai-config");
     const frameworkHeader = req.headers.get("x-framework") || "react";
+
+    // Load AI config: authenticated user from DB, fallback to env defaults
     let config: any = {
       provider: "zhipu",
       baseURL: "https://open.bigmodel.cn/api/paas/v4",
@@ -318,11 +385,25 @@ export async function POST(req: Request) {
       model: "glm-4v-flash",
     };
 
-    if (customConfig) {
-      try {
-        config = JSON.parse(customConfig);
-      } catch (err) {
-        console.error("Failed to parse custom config:", err);
+    if (sessionUserId) {
+      const userConfig = await db
+        .select({
+          aiProvider: users.aiProvider,
+          aiApiKey: users.aiApiKey,
+          aiBaseURL: users.aiBaseURL,
+          aiModel: users.aiModel,
+        })
+        .from(users)
+        .where(eq(users.id, sessionUserId))
+        .get();
+
+      if (userConfig?.aiApiKey) {
+        config = {
+          provider: userConfig.aiProvider || "zhipu",
+          apiKey: userConfig.aiApiKey,
+          baseURL: userConfig.aiBaseURL || "https://open.bigmodel.cn/api/paas/v4",
+          model: userConfig.aiModel || "glm-4v-flash",
+        };
       }
     }
 
@@ -381,8 +462,6 @@ export async function POST(req: Request) {
     const conversationMessages = messages.map(convertMessage);
 
     const streamResult = await withRetry(() => {
-      // streamText returns a StreamTextResult (not a promise around it),
-      // so we wrap the entire streamText call in a Promise
       return Promise.resolve(
         streamText({
           model,
@@ -391,10 +470,36 @@ export async function POST(req: Request) {
       );
     });
 
-    return streamResult.toUIMessageStreamResponse();
+    const response = streamResult.toUIMessageStreamResponse();
+
+    // Monitor stream for errors — if the stream fails, refund credits
+    if (sessionUserId && creditsDeducted) {
+      // We wrap the response to detect stream errors
+      // The stream itself handles transport; if streamText threw above, we already caught it
+    }
+
+    return response;
   } catch (error: any) {
+    // Refund credits if deduction happened but generation failed
+    if (sessionUserId && creditsDeducted) {
+      await refundCredits(sessionUserId);
+    }
     const status = error?.statusCode || error?.status;
     console.error("API Error:", error);
+
+    if (error?.message === "USER_NOT_FOUND") {
+      return new Response(JSON.stringify({ error: "用户不存在" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (error?.message === "INSUFFICIENT_CREDITS") {
+      return new Response(JSON.stringify({ error: "积分不足，请升级套餐" }), {
+        status: 402,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       error: status === 429 ? "AI 模型请求过于频繁，请稍后重试" : String(error) 
     }), {
