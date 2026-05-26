@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_SC, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // 中文字体 - Noto Sans SC
@@ -34,7 +35,7 @@ export default function RootLayout({
       <body
         className={`${notoSansSC.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <AuthProvider><ErrorBoundary>{children}</ErrorBoundary></AuthProvider>
+        <AuthProvider><ThemeProvider><ErrorBoundary>{children}</ErrorBoundary></ThemeProvider></AuthProvider>
       </body>
     </html>
   );

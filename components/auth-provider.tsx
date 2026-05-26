@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (!isPublic && !checked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black dark:bg-black">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
+         <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

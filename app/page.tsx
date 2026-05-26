@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles, Code2, Zap, ImagePlus, Layers, Share2, Monitor, Tablet, Smartphone, Quote } from "lucide-react";
+import { ArrowRight, Sparkles, Code2, Zap, ImagePlus, Layers, Share2, Monitor, Quote } from "lucide-react";
+import { Button, Badge, Card, Logo, SiteHeader, SiteFooter } from "@/components/ui";
 
 const STATS = [
   { value: "免费", label: "开始使用", suffix: "" },
@@ -30,36 +31,36 @@ const TESTIMONIALS = [
 ];
 
 const FEATURES = [
-  { icon: ImagePlus, title: "截图识别", desc: "上传设计稿截图，AI 精准还原为代码。支持 PNG、JPG、WebP。" },
-  { icon: Sparkles, title: "AI 智能生成", desc: "先进的 AI 模型分析您的草图，即时生成生产级组件代码。" },
-  { icon: Layers, title: "多框架输出", desc: "支持 React、Vue、小程序、HTML 等主流框架一键切换。" },
-  { icon: Monitor, title: "实时预览", desc: "桌面/平板/手机三种预览模式，实时查看生成效果。" },
-  { icon: Code2, title: "代码编辑", desc: "内置代码编辑器，支持语法高亮和多文件浏览。" },
-  { icon: Share2, title: "分享协作", desc: "一键生成分享链接，展示你的作品到 Gallery。" },
+  { icon: ImagePlus, title: "截图识别", desc: "上传设计稿截图，AI 精准还原为代码。支持 PNG、JPG、WebP。", color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" },
+  { icon: Sparkles, title: "AI 智能生成", desc: "先进的 AI 模型分析您的草图，即时生成生产级组件代码。", color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
+  { icon: Layers, title: "多框架输出", desc: "支持 React、Vue、小程序、HTML 等主流框架一键切换。", color: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400" },
+  { icon: Monitor, title: "实时预览", desc: "桌面/平板/手机三种预览模式，实时查看生成效果。", color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" },
+  { icon: Code2, title: "代码编辑", desc: "内置代码编辑器，支持语法高亮和多文件浏览。", color: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" },
+  { icon: Share2, title: "分享协作", desc: "一键生成分享链接，展示你的作品到 Gallery。", color: "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400" },
 ];
 
 function CodeDemoBlock() {
   const lines = [
-    { color: "", text: 'import { Header } from \x27./components\x27;' },
-    { color: "", text: "" },
-    { color: "", text: 'export default function Page() {' },
-    { color: "", text: '  return (' },
-    { color: "", text: '    <div className="container">' },
-    { color: "", text: '      <Header />' },
-    { color: "", text: '      <div className="grid">' },
-    { color: "text-gray-600", text: '        {/* component */}' },
-    { color: "", text: '      </div>' },
-    { color: "", text: '    </div>' },
-    { color: "", text: '  );' },
-    { color: "", text: '}' },
+    { text: 'import { Header } from \x27./components\x27;' },
+    { text: "" },
+    { text: 'export default function Page() {' },
+    { text: '  return (' },
+    { text: '    <div className="container">' },
+    { text: '      <Header />' },
+    { text: '      <div className="grid">' },
+    { text: '        {/* component */}' },
+    { text: '      </div>' },
+    { text: '    </div>' },
+    { text: '  );' },
+    { text: '}' },
   ];
 
   return (
     <div className="text-gray-300">
       {lines.map((line, i) => (
-        <div key={i} className={line.color}>{line.text}</div>
+        <div key={i} className={i === 7 ? "text-gray-600" : ""}>{line.text}</div>
       ))}
-      <p className="text-center text-gray-500 mt-3 text-[10px]">✨ 生成的高质量代码</p>
+      <p className="text-center text-gray-500 mt-3 text-[10px]">AI 生成的高质量代码</p>
     </div>
   );
 }
@@ -67,34 +68,25 @@ function CodeDemoBlock() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 backdrop-blur-xl bg-white/50 dark:bg-black/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-400 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white dark:text-black" />
-            </div>
-            <span className="font-semibold text-lg tracking-tight">智能绘图</span>
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link href="#features" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">功能特性</Link>
-            <Link href="/gallery" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">作品展示</Link>
-            <Link href="/pricing" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">定价</Link>
-            <Link href="/dashboard" className="bg-gray-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center gap-2">
-              开始使用 <ArrowRight className="w-4 h-4" />
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader>
+        <Logo size="md" />
+        <nav className="flex items-center gap-6">
+          <Link href="#features" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">功能特性</Link>
+          <Link href="/gallery" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">作品展示</Link>
+          <Link href="/pricing" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">定价</Link>
+          <Button size="sm" href="/dashboard">
+            开始使用 <ArrowRight className="w-4 h-4" />
+          </Button>
+        </nav>
+      </SiteHeader>
 
-      {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 pt-20 pb-8">
         <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm mb-6">
+          <Badge>
             <Zap className="w-4 h-4" />
             <span>AI 驱动 • 截图转代码 • 多框架支持</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6 text-gray-900 dark:text-white">
+          </Badge>
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight mt-6 mb-6 text-gray-900 dark:text-white">
             将草图转化为{" "}
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">生产级代码</span>
           </h1>
@@ -102,55 +94,50 @@ export default function LandingPage() {
             手绘线框、上传截图，AI 即刻生成 React / Vue / 小程序代码。告别从零开始的手动编码。
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Link href="/register" className="bg-gray-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-all flex items-center gap-2 shadow-lg">
+            <Button variant="gradient" size="lg" href="/register">
               免费开始 <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link href="#demo" className="px-8 py-3 rounded-lg font-medium border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+            </Button>
+            <Button variant="secondary" size="lg" href="#demo">
               查看演示
-            </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* Demo Section */}
       <section id="demo" className="max-w-6xl mx-auto px-6 py-12">
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-3xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-3xl" />
           <div className="relative bg-white dark:bg-gray-900/80 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            {/* Window Chrome */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <div className="w-3 h-3 rounded-full bg-red-500" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500" />
+              <div className="w-3 h-3 rounded-full bg-green-500" />
               <span className="ml-3 text-xs text-gray-400 dark:text-gray-600 font-mono">sketch-to-code.ai/editor</span>
             </div>
-            {/* Demo Content: Sketch → AI → Code */}
             <div className="p-6 md:p-8">
               <div className="grid md:grid-cols-3 gap-4 md:gap-6 items-center">
-                {/* Left: Wireframe */}
                 <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 space-y-4 bg-gray-50/50 dark:bg-gray-800/50">
-                  <div className="h-3 w-24 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                  <div className="h-8 w-full bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                  <div className="h-3 w-24 bg-gray-300 dark:bg-gray-600 rounded" />
+                  <div className="h-8 w-full bg-gray-200 dark:bg-gray-700 rounded-lg" />
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg" />
                   </div>
-                  <div className="h-3 w-32 bg-gray-300 dark:bg-gray-600 rounded"></div>
-                  <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                  <div className="h-3 w-32 bg-gray-300 dark:bg-gray-600 rounded" />
+                  <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded" />
                   <div className="flex gap-3">
-                    <div className="h-10 w-24 bg-blue-200 dark:bg-blue-900/40 rounded-lg"></div>
-                    <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600"></div>
+                    <div className="h-10 w-24 bg-blue-200 dark:bg-blue-900/40 rounded-lg" />
+                    <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600" />
                   </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">📷 你的设计稿 / 手绘</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">你的设计稿 / 手绘</p>
                 </div>
 
-                {/* Center: AI Arrow */}
                 <div className="flex flex-col items-center gap-3 py-4">
                   <div className="relative">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-pulse">
                       <Sparkles className="w-8 h-8 text-white" />
                     </div>
-                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl animate-pulse"></div>
+                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl animate-pulse" />
                   </div>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">AI 分析</span>
                   <div className="flex flex-col items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
@@ -159,7 +146,6 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                {/* Right: Code Preview */}
                 <div className="bg-gray-900 dark:bg-black rounded-xl p-5 font-mono text-xs leading-relaxed overflow-hidden">
                   <CodeDemoBlock />
                 </div>
@@ -169,21 +155,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
       <section className="max-w-5xl mx-auto px-6 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {STATS.map((stat) => (
-            <div key={stat.label} className="text-center p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+            <Card key={stat.label} className="text-center p-6">
               <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {stat.value}{stat.suffix}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">{stat.label}</div>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">快速构建所需的一切</h2>
@@ -191,23 +175,22 @@ export default function LandingPage() {
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {FEATURES.map((feat) => (
-            <div key={feat.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 hover:shadow-lg transition-shadow group">
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 transition-colors ${feat.icon === Sparkles ? "bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50" : feat.icon === ImagePlus ? "bg-purple-100 dark:bg-purple-900/30 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50" : feat.icon === Layers ? "bg-cyan-100 dark:bg-cyan-900/30 group-hover:bg-cyan-200 dark:group-hover:bg-cyan-900/50" : feat.icon === Monitor ? "bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50" : feat.icon === Code2 ? "bg-orange-100 dark:bg-orange-900/30 group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50" : "bg-pink-100 dark:bg-pink-900/30 group-hover:bg-pink-200 dark:group-hover:bg-pink-900/50"}`}>
-                <feat.icon className={`w-6 h-6 ${feat.icon === Sparkles ? "text-blue-600 dark:text-blue-400" : feat.icon === ImagePlus ? "text-purple-600 dark:text-purple-400" : feat.icon === Layers ? "text-cyan-600 dark:text-cyan-400" : feat.icon === Monitor ? "text-green-600 dark:text-green-400" : feat.icon === Code2 ? "text-orange-600 dark:text-orange-400" : "text-pink-600 dark:text-pink-400"}`} />
+            <Card key={feat.title} hover className="p-8 group">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 transition-colors ${feat.color}`}>
+                <feat.icon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{feat.title}</h3>
               <p className="text-gray-600 dark:text-gray-400">{feat.desc}</p>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* Testimonials */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white mb-12">用户怎么说</h2>
         <div className="grid md:grid-cols-3 gap-8">
           {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 hover:shadow-lg transition-shadow">
+            <Card key={t.name} hover className="p-8">
               <Quote className="w-8 h-8 text-gray-200 dark:text-gray-700 mb-4" />
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-6">{t.content}</p>
               <div className="flex items-center gap-3">
@@ -219,48 +202,41 @@ export default function LandingPage() {
                   <div className="text-xs text-gray-500 dark:text-gray-400">{t.role}</div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* Pricing CTA */}
       <section className="max-w-7xl mx-auto px-6 py-16">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent)]" />
           <div className="relative">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">准备好加速构建了吗？</h2>
             <p className="text-lg text-blue-100 mb-8 max-w-2xl mx-auto">
               用 AI 加速你的前端开发流程。免费开始，无需信用卡。
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link href="/register" className="inline-flex items-center gap-2 bg-white text-gray-900 px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-all shadow-lg">
+              <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100" href="/register">
                 免费开始 <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link href="/pricing" className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-8 py-3 rounded-lg font-medium hover:bg-white/20 transition-all border border-white/20">
+              </Button>
+              <Button size="lg" variant="secondary" className="border-white/20 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20" href="/pricing">
                 查看定价方案
-              </Link>
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-gradient-to-br from-gray-900 to-gray-700 dark:from-white dark:to-gray-400 rounded flex items-center justify-center">
-              <Sparkles className="w-3 h-3 text-white dark:text-black" />
-            </div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">基于 Next.js 和 Vercel AI SDK 构建</span>
-          </div>
+      <SiteFooter>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <Logo size="sm" />
           <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
             <Link href="/gallery" className="hover:text-gray-900 dark:hover:text-white transition-colors">作品展示</Link>
             <Link href="/pricing" className="hover:text-gray-900 dark:hover:text-white transition-colors">定价</Link>
             <Link href="/register" className="hover:text-gray-900 dark:hover:text-white transition-colors">注册</Link>
           </div>
         </div>
-      </footer>
+      </SiteFooter>
     </div>
   );
 }

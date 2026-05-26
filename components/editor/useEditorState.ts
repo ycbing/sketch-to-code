@@ -5,9 +5,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { parseGeneratedFiles } from "@/lib/parse-files";
 import type { Framework } from "@/lib/frameworks";
-import { FRAMEWORK_CONFIGS } from "@/lib/frameworks";
+import { useTheme } from "@/components/theme-provider";
 
-type Theme = "light" | "dark";
 type TabType = "preview" | "code";
 
 interface CodeVersion {
@@ -23,31 +22,12 @@ export function useEditorState(framework: Framework) {
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-      setTheme("light");
-    }
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const newTheme = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("theme", newTheme);
-      return newTheme;
-    });
-  }, []);
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const {
     messages,
@@ -124,24 +104,20 @@ export function useEditorState(framework: Framework) {
     [],
   );
 
-  useEffect(() => {
-    const updated = updateActiveFile(generatedFiles, activeFile);
-    if (updated !== activeFile) setActiveFile(updated);
-  }, [generatedFiles, activeFile, updateActiveFile]);
+  const effectiveActiveFile = updateActiveFile(generatedFiles, activeFile);
+  if (effectiveActiveFile !== activeFile) {
+    setActiveFile(effectiveActiveFile);
+  }
 
-  useEffect(() => {
-    if (
-      generatedCode &&
-      generatedCode !== codeHistory[codeHistory.length - 1]?.code
-    ) {
-      setCodeHistory((prev) => [
-        ...prev.slice(-9),
-        { code: generatedCode, timestamp: Date.now() },
-      ]);
-    }
-  }, [generatedCode, codeHistory]);
-
-  const isDark = theme === "dark";
+  if (
+    generatedCode &&
+    generatedCode !== codeHistory[codeHistory.length - 1]?.code
+  ) {
+    setCodeHistory((prev) => [
+      ...prev.slice(-9),
+      { code: generatedCode, timestamp: Date.now() },
+    ]);
+  }
 
   return {
     input,
@@ -158,9 +134,8 @@ export function useEditorState(framework: Framework) {
     setError,
     showKeyboardShortcuts,
     setShowKeyboardShortcuts,
-    theme,
-    toggleTheme,
     isDark,
+    toggleTheme,
     uploadedImage,
     setUploadedImage,
     isDragging,
