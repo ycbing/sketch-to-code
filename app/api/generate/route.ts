@@ -298,7 +298,7 @@ function convertMessage(msg: UIMessage): {
   };
 }
 
-const CREDITS_PER_GENERATION = 20;
+const CREDITS_PER_GENERATION = 5;
 
 async function deductCredits(userId: string): Promise<number> {
   return db.transaction(async (tx) => {

@@ -70,7 +70,7 @@ export function CanvasPanel({
 
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onFileInput} className="hidden" />
 
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
           <div className="backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl p-4 shadow-2xl bg-white/95 dark:bg-black/80 shadow-gray-300/50 dark:shadow-black/50 transition-colors duration-300">
             {uploadedImage && (
               <div className="mb-3 flex items-center gap-3 p-2 rounded-lg border border-dashed border-gray-300 dark:border-white/20">

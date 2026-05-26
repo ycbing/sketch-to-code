@@ -202,7 +202,7 @@ export default function EditorPage() {
   const handleGenerate = useCallback(async () => {
     if (state.status === "streaming") return;
     state.setError(null);
-    if (session?.user?.id && credits !== null && credits < 20) { state.setError("积分不足，请升级套餐"); return; }
+    if (session?.user?.id && credits !== null && credits < 5) { state.setError("积分不足，请升级套餐"); return; }
     let image: string | null = state.uploadedImage;
     if (!image) image = await getCanvasImage();
     if (!image) { if (!state.error) state.setError("请先在画布上绘制内容或上传设计稿截图"); return; }
