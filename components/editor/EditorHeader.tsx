@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Loader2, Sparkles, Keyboard, History, Share2, Sun, Moon, Home, Coins, LogOut } from "lucide-react";
+import { Loader2, Keyboard, History, Share2, Sun, Moon, Home, Coins, LogOut } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
 import { Logo } from "@/components/ui";

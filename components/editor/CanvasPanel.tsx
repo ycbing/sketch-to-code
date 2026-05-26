@@ -17,7 +17,6 @@ const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), {
 
 interface CanvasPanelProps {
   projectId: string;
-  isDark: boolean;
   uploadedImage: string | null;
   isDragging: boolean;
   isStreaming: boolean;
@@ -35,7 +34,7 @@ interface CanvasPanelProps {
 }
 
 export function CanvasPanel({
-  projectId, isDark, uploadedImage, isDragging, isStreaming, hasCode,
+  projectId, uploadedImage, isDragging, isStreaming, hasCode,
   onEditorMount, onGenerate, onStop, onRemoveImage, onFileInput,
   onDragOver, onDragEnter, onDragLeave, onDrop, lastMessage,
 }: CanvasPanelProps) {

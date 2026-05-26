@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -34,9 +35,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", children, href, ...props }, ref) => {
     if (href) {
       return (
-        <a href={href} className={getClassName(variant, size, className)}>
+        <Link href={href} className={getClassName(variant, size, className)}>
           {children}
-        </a>
+        </Link>
       );
     }
     return (

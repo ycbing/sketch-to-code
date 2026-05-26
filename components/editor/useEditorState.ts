@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { parseGeneratedFiles } from "@/lib/parse-files";
@@ -86,7 +86,6 @@ export function useEditorState(framework: Framework) {
   }, [lastMessage]);
 
   const [activeFile, setActiveFile] = useState<string>("/App.js");
-  const [codeHistory, setCodeHistory] = useState<CodeVersion[]>([]);
 
   const fileNameList = useMemo(
     () => Object.keys(generatedFiles),
@@ -104,20 +103,29 @@ export function useEditorState(framework: Framework) {
     [],
   );
 
-  const effectiveActiveFile = updateActiveFile(generatedFiles, activeFile);
-  if (effectiveActiveFile !== activeFile) {
-    setActiveFile(effectiveActiveFile);
-  }
+  const effectiveActiveFile = useMemo(
+    () => updateActiveFile(generatedFiles, activeFile),
+    [generatedFiles, activeFile, updateActiveFile],
+  );
 
-  if (
-    generatedCode &&
-    generatedCode !== codeHistory[codeHistory.length - 1]?.code
-  ) {
-    setCodeHistory((prev) => [
-      ...prev.slice(-9),
-      { code: generatedCode, timestamp: Date.now() },
-    ]);
-  }
+  const codeHistory = useMemo(() => {
+    if (!generatedCode) return [];
+    const entries: CodeVersion[] = [];
+    for (const msg of messages) {
+      if (msg.role !== "assistant" || !msg.parts) continue;
+      try {
+        const lastPart = msg.parts[msg.parts.length - 1];
+        if (lastPart?.type === "text") {
+          const { files: parsed } = parseGeneratedFiles(lastPart.text);
+          const code = parsed["/App.js"] || parsed["/App.tsx"] || Object.values(parsed)[0] || lastPart.text.trim();
+          if (code) {
+            entries.push({ code, timestamp: msg.createdAt ? new Date(msg.createdAt).getTime() : entries.length });
+          }
+        }
+      } catch { /* skip unparseable messages */ }
+    }
+    return entries.slice(-10);
+  }, [messages, generatedCode]);
 
   return {
     input,
@@ -129,7 +137,6 @@ export function useEditorState(framework: Framework) {
     showHistory,
     setShowHistory,
     codeHistory,
-    setCodeHistory,
     error,
     setError,
     showKeyboardShortcuts,
@@ -142,7 +149,7 @@ export function useEditorState(framework: Framework) {
     setIsDragging,
     copiedAll,
     setCopiedAll,
-    activeFile,
+    activeFile: effectiveActiveFile,
     setActiveFile,
     fileNameList,
     generatedCode,

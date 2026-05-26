@@ -6,6 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight, Code2, Eye, Loader2, AlertCircle } from "lucide-react";
 import { Button, Card, Logo, SiteHeader } from "@/components/ui";
+import { useTheme } from "@/components/theme-provider";
 
 const PreviewMode = dynamic(
   () => import("@/components/editor/PreviewMode").then((m) => ({ default: m.PreviewMode })),
@@ -61,6 +62,8 @@ export default function SharePage() {
     loadProject();
   }, [token]);
 
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [files, setFiles] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -173,9 +176,9 @@ export default function SharePage() {
             </div>
             <div className="flex-1 min-h-[500px]">
               {activeTab === "preview" ? (
-                <PreviewMode files={files} isDark={document.documentElement.classList.contains("dark")} />
+                <PreviewMode files={files} isDark={isDark} />
               ) : (
-                <CodeMode files={files} activeFile={activeFile} isDark={document.documentElement.classList.contains("dark")} />
+                <CodeMode files={files} activeFile={activeFile} isDark={isDark} />
               )}
             </div>
           </div>

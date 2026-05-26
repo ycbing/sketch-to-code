@@ -365,7 +365,7 @@ export default function EditorPage() {
       <div className="md:hidden flex-1 overflow-hidden relative z-10">
         {mobileView === "canvas" ? (
           <CanvasPanel
-            projectId={projectId} isDark={state.isDark} uploadedImage={state.uploadedImage}
+            projectId={projectId} uploadedImage={state.uploadedImage}
             isDragging={state.isDragging} isStreaming={state.status === "streaming"} hasCode={!!state.generatedCode}
             onEditorMount={setEditor} onGenerate={handleGenerate} onStop={state.stop}
             onRemoveImage={() => state.setUploadedImage(null)} onFileInput={handleFileInput}
@@ -394,7 +394,7 @@ export default function EditorPage() {
       <Group orientation="horizontal" className="hidden md:flex flex-1 overflow-hidden relative z-10">
         <Panel defaultSize={50} minSize={30}>
           <CanvasPanel
-            projectId={projectId} isDark={state.isDark} uploadedImage={state.uploadedImage}
+            projectId={projectId} uploadedImage={state.uploadedImage}
             isDragging={state.isDragging} isStreaming={state.status === "streaming"} hasCode={!!state.generatedCode}
             onEditorMount={setEditor} onGenerate={handleGenerate} onStop={state.stop}
             onRemoveImage={() => state.setUploadedImage(null)} onFileInput={handleFileInput}
