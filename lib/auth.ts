@@ -8,6 +8,7 @@ import { db } from "./server-db";
 import { users } from "./server-db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     GitHub({
       clientId: process.env.GITHUB_ID || "",
