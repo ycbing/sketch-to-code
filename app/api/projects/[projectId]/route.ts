@@ -3,32 +3,51 @@ import { db } from "@/lib/server-db";
 import { projects, versions } from "@/lib/server-db/schema";
 import { eq } from "drizzle-orm";
 import { initDatabase } from "@/lib/init-db";
+import { auth } from "@/lib/auth";
 
 initDatabase();
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/projects/[projectId] — 获取单个项目 */
+async function requireAuth() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+  return session.user;
+}
+
+async function checkProjectOwner(projectId: string, userId: string) {
+  const project = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .get();
+  if (!project) return "not_found";
+  if (project.userId !== userId) return "forbidden";
+  return project;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const { projectId } = await params;
-    const project = await db
-      .select()
-      .from(projects)
-      .where(eq(projects.id, projectId))
-      .get();
-
-    if (!project) {
-      return NextResponse.json(
-        { error: "Project not found" },
-        { status: 404 },
-      );
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
-    return NextResponse.json(project);
+    const { projectId } = await params;
+    const result = await checkProjectOwner(projectId, user.id);
+    if (result === "not_found") {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (result === "forbidden") {
+      return NextResponse.json({ error: "无权访问该项目" }, { status: 403 });
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("GET /api/projects/[projectId] error:", error);
     return NextResponse.json(
@@ -38,17 +57,29 @@ export async function GET(
   }
 }
 
-/** PUT /api/projects/[projectId] — 更新项目 */
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const { projectId } = await params;
+    const accessCheck = await checkProjectOwner(projectId, user.id);
+    if (accessCheck === "not_found") {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (accessCheck === "forbidden") {
+      return NextResponse.json({ error: "无权修改该项目" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name, description } = body;
 
-    const updates: Record<string, any> = { updatedAt: new Date().toISOString() };
+    const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
 
@@ -67,17 +98,26 @@ export async function PUT(
   }
 }
 
-/** DELETE /api/projects/[projectId] — 删除项目（级联删除版本） */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const { projectId } = await params;
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
 
-    // 先删除所有版本（虽然 FK cascade 应该处理，但显式删除更安全）
+    const { projectId } = await params;
+    const accessCheck = await checkProjectOwner(projectId, user.id);
+    if (accessCheck === "not_found") {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (accessCheck === "forbidden") {
+      return NextResponse.json({ error: "无权删除该项目" }, { status: 403 });
+    }
+
     await db.delete(versions).where(eq(versions.projectId, projectId));
-    // 删除项目
     await db.delete(projects).where(eq(projects.id, projectId));
 
     return NextResponse.json({ success: true });

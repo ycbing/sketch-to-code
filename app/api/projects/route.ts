@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server-db";
 import { projects } from "@/lib/server-db/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { initDatabase } from "@/lib/init-db";
+import { auth } from "@/lib/auth";
 
-// 确保表存在
 initDatabase();
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/projects — 获取所有项目（按 updatedAt 降序） */
+async function requireAuth() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+  return session.user;
+}
+
 export async function GET() {
   try {
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const allProjects = await db
       .select()
       .from(projects)
+      .where(eq(projects.userId, user.id))
       .orderBy(desc(projects.updatedAt));
     return NextResponse.json(allProjects);
   } catch (error) {
@@ -26,9 +39,13 @@ export async function GET() {
   }
 }
 
-/** POST /api/projects — 创建项目 */
 export async function POST(request: Request) {
   try {
+    const user = await requireAuth();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, name, description, createdAt, updatedAt } = body;
 
@@ -44,7 +61,7 @@ export async function POST(request: Request) {
       id,
       name,
       description: description ?? null,
-      userId: "default-user",
+      userId: user.id,
       createdAt: createdAt ? new Date(createdAt).toISOString() : now.toISOString(),
       updatedAt: updatedAt ? new Date(updatedAt).toISOString() : now.toISOString(),
     });

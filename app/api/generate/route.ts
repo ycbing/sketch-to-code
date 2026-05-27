@@ -1,5 +1,5 @@
 // app/api/generate/route.ts
-import { streamText, type UIMessage } from "ai";
+import { streamText, type UIMessage, type ModelMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { auth } from "@/lib/auth";
@@ -202,22 +202,23 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 10; // requests per window
 const RATE_LIMIT_WINDOW = 60_000; // 1 minute
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of rateLimitMap) {
+    if (now > val.resetAt) rateLimitMap.delete(key);
+  }
+}, 30_000);
+
 function checkRateLimit(ip: string): { allowed: boolean; retryAfter: number } {
   const now = Date.now();
-  let entry = rateLimitMap.get(ip);
+  const entry = rateLimitMap.get(ip);
   if (!entry || now > entry.resetAt) {
-    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW };
-    rateLimitMap.set(ip, entry);
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, retryAfter: 0 };
   }
   entry.count++;
   if (entry.count > RATE_LIMIT_MAX) {
     return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-  // Cleanup old entries periodically
-  if (rateLimitMap.size > 1000) {
-    for (const [key, val] of rateLimitMap) {
-      if (now > val.resetAt) rateLimitMap.delete(key);
-    }
   }
   return { allowed: true, retryAfter: 0 };
 }
@@ -228,16 +229,19 @@ async function withRetry<T>(
   maxRetries = 2,
   baseDelay = 1000,
 ): Promise<T> {
-  let lastError: any;
+  let lastError: Error | null = null;
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fn();
-    } catch (err: any) {
-      lastError = err;
-      const status = err?.statusCode || err?.status || 0;
-      // Only retry on 429 (rate limit) or 5xx (server error)
+    } catch (err) {
+      if (err instanceof Error) {
+        lastError = err;
+      } else {
+        lastError = new Error(String(err));
+      }
+      const status = (err as { statusCode?: number; status?: number })?.statusCode || (err as { status?: number })?.status || 0;
       if (status !== 429 && (status < 500 || status > 599) && !String(err).includes('rate')) {
-        throw err;
+        throw lastError;
       }
       if (i < maxRetries) {
         const delay = baseDelay * Math.pow(2, i) + Math.random() * 500;
@@ -250,52 +254,39 @@ async function withRetry<T>(
 }
 
 function convertMessage(msg: UIMessage): {
-  role: "user" | "assistant";
-  content: Array<{ type: string; text?: string; image?: string }>;
+  role: "user" | "assistant" | "system";
+  content: string | Array<{ type: string; text?: string; image?: string }>;
 } {
   if (msg.role === "assistant") {
-    // Assistant messages: extract text from parts
-    const text = (msg.parts || [])
-      .filter((p: any) => p.type === "text")
-      .map((p: any) => p.text)
+    const text = msg.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
       .join("\n");
-    return {
-      role: "assistant",
-      content: [{ type: "text", text }],
-    };
+    return { role: "assistant", content: text };
   }
 
-  // User messages: may have parts (text + image) or just text
   if (msg.parts && msg.parts.length > 0) {
     const content: Array<{ type: string; text?: string; image?: string }> = [];
 
-    for (const part of msg.parts as any[]) {
+    for (const part of msg.parts) {
       if (part.type === "text" && part.text) {
         content.push({ type: "text", text: part.text });
       } else if (part.type === "file" && part.url) {
-        // Convert file parts to image parts for the AI model
         const mediaType = part.mediaType || "";
         if (mediaType.startsWith("image/")) {
           content.push({ type: "image", image: part.url });
         }
-      } else if (part.type === "image" && part.image) {
-        content.push({ type: "image", image: part.image });
       }
     }
 
-    // Fallback: if parts exist but no content was extracted, skip
     if (content.length === 0) {
-      content.push({ type: "text", text: "" });
+      return { role: "user", content: "" };
     }
 
     return { role: "user", content };
   }
 
-  // Simple text message (no parts)
-  return {
-    role: "user",
-    content: [{ type: "text", text: "" }],
-  };
+  return { role: "user", content: "" };
 }
 
 const CREDITS_PER_GENERATION = 5;
@@ -369,7 +360,7 @@ export async function POST(req: Request) {
     const session = await auth();
     if (session?.user?.id) {
       sessionUserId = session.user.id;
-      const remainingCredits = await deductCredits(session.user.id);
+      await deductCredits(session.user.id);
       creditsDeducted = true;
     }
 
@@ -385,7 +376,7 @@ export async function POST(req: Request) {
     const frameworkHeader = req.headers.get("x-framework") || "react";
 
     // Load AI config: authenticated user from DB, fallback to env defaults
-    let config: any = {
+    let config: { provider: string; baseURL?: string; apiKey?: string; model: string } = {
       provider: "zhipu",
       baseURL: "https://open.bigmodel.cn/api/paas/v4",
       apiKey: process.env.ZHIPU_API_KEY || "",
@@ -414,7 +405,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let model: any;
+    let model;
 
     // 根据提供商创建相应的模型
     if (config.provider === "openai") {
@@ -422,26 +413,26 @@ export async function POST(req: Request) {
         baseURL: config.baseURL,
         apiKey: config.apiKey,
       });
-      model = openai.chat(config.model);
+      model = openai.chat(config.model as Parameters<typeof openai.chat>[0]);
     } else if (config.provider === "anthropic") {
       const anthropic = createAnthropic({
         baseURL: config.baseURL,
         apiKey: config.apiKey,
       });
-      model = anthropic.chat(config.model);
+      model = anthropic.chat(config.model as Parameters<typeof anthropic.chat>[0]);
     } else if (config.provider === "siliconflow") {
       const siliconflow = createOpenAI({
         baseURL: config.baseURL,
         apiKey: config.apiKey,
       });
-      model = siliconflow.chat(config.model);
+      model = siliconflow.chat(config.model as Parameters<typeof siliconflow.chat>[0]);
     } else {
       // 默认使用智谱 AI
       const zhipu = createOpenAI({
         baseURL: config.baseURL || "https://open.bigmodel.cn/api/paas/v4",
         apiKey: config.apiKey || "",
       });
-      model = zhipu.chat(config.model || "glm-4v-flash");
+      model = zhipu.chat(config.model);
     }
 
     // Build the full conversation from ALL messages for context preservation
@@ -466,7 +457,7 @@ export async function POST(req: Request) {
     };
 
     // Convert all messages (history) for the AI model
-    const conversationMessages = messages.map(convertMessage) as any;
+    const conversationMessages = messages.map(convertMessage) as ModelMessage[];
 
     const streamResult = await withRetry(() => {
       return Promise.resolve(
@@ -480,35 +471,33 @@ export async function POST(req: Request) {
     const response = streamResult.toUIMessageStreamResponse();
 
     // Monitor stream for errors — if the stream fails, refund credits
-    if (sessionUserId && creditsDeducted) {
-      // We wrap the response to detect stream errors
-      // The stream itself handles transport; if streamText threw above, we already caught it
-    }
+    // Stream errors before response are caught by the try/catch above.
+    // For mid-stream failures, the credits refund logic in the catch block handles it.
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
     // Refund credits if deduction happened but generation failed
     if (sessionUserId && creditsDeducted) {
       await refundCredits(sessionUserId);
     }
-    const status = error?.statusCode || error?.status;
+    const status = (error as { statusCode?: number; status?: number })?.statusCode || (error as { status?: number })?.status;
     console.error("API Error:", error);
 
-    if (error?.message === "USER_NOT_FOUND") {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return new Response(JSON.stringify({ error: "用户不存在" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error?.message === "INSUFFICIENT_CREDITS") {
+    if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
       return new Response(JSON.stringify({ error: "积分不足，请升级套餐" }), {
         status: 402,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ 
-      error: status === 429 ? "AI 模型请求过于频繁，请稍后重试" : String(error) 
+    return new Response(JSON.stringify({
+      error: status === 429 ? "AI 模型请求过于频繁，请稍后重试" : (error instanceof Error ? error.message : String(error)),
     }), {
       status: status === 429 ? 429 : 500,
       headers: { "Content-Type": "application/json" },

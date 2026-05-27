@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server, Loader2 } from "lucide-react";
+import { Settings, Home, Save, Check, AlertCircle, Sparkles, Key, Server } from "lucide-react";
 import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
-import { Button, Card, Input, Logo, SiteHeader } from "@/components/ui";
+import { Button, Card, Input, SiteHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 interface AIModelConfig {
@@ -30,7 +30,6 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-  const [loading, setLoading] = useState(true);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -52,7 +51,6 @@ export default function SettingsPage() {
       }
       const savedFramework = localStorage.getItem("sketch-framework") as Framework | null;
       if (savedFramework) setDefaultFramework(savedFramework);
-      setLoading(false);
     }
     loadConfig();
   }, [session?.user?.id]);

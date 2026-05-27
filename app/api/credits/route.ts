@@ -33,15 +33,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
   try {
-    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
 
     const { amount, reason } = await req.json();
 
-    if (typeof amount !== "number" || !reason) {
+    if (typeof amount !== "number" || !Number.isInteger(amount) || !reason) {
       return NextResponse.json(
         { error: "参数无效" },
         { status: 400 },
@@ -84,12 +84,11 @@ export async function POST(req: NextRequest) {
       amount,
       reason,
     });
-  } catch (error: any) {
-    if (error?.message === "USER_NOT_FOUND") {
+  } catch (error) {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
-    if (error?.message === "INSUFFICIENT_CREDITS") {
-      const session = await auth();
+    if (error instanceof Error && error.message === "INSUFFICIENT_CREDITS") {
       const user = session?.user?.id
         ? await db.select({ credits: users.credits }).from(users).where(eq(users.id, session.user.id)).get()
         : null;

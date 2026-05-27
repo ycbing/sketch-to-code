@@ -16,6 +16,8 @@ const Tldraw = dynamic(() => import("tldraw").then((mod) => mod.Tldraw), {
   ),
 });
 
+import type { UIMessage } from "ai";
+
 interface CanvasPanelProps {
   projectId: string;
   uploadedImage: string | null;
@@ -31,7 +33,7 @@ interface CanvasPanelProps {
   onDragEnter: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
-  lastMessage: any;
+  lastMessage: UIMessage | undefined;
 }
 
 export function CanvasPanel({
@@ -42,7 +44,7 @@ export function CanvasPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="relative flex flex-col border-r border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 transition-colors duration-300">
+    <div className="relative h-full border-r border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 transition-colors duration-300">
       <div className="w-full h-full relative">
         <Tldraw onMount={onEditorMount} persistenceKey={`sketch-project-${projectId}`} hideUi={false} />
 
@@ -136,8 +138,8 @@ export function CanvasPanel({
                     <Loader2 className="w-3 h-3 animate-spin" />
                     <span>AI 正在生成代码...</span>
                     <span className="text-blue-500 dark:text-blue-400">
-                      {lastMessage && lastMessage.role === "assistant"
-                        ? `${((lastMessage.parts?.filter((p: any) => p.type === "text").reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) / 4000) * 100).toFixed(0)}%`
+{lastMessage && lastMessage.role === "assistant"
+                        ? `${((Array.from(lastMessage.parts).filter((p): p is { type: "text"; text: string } => p.type === "text").reduce((acc, p) => acc + p.text.length, 0) / 4000) * 100).toFixed(0)}%`
                         : "0%"}
                     </span>
                   </div>
@@ -145,8 +147,8 @@ export function CanvasPanel({
                     <div
                       className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out"
                       style={{
-                        width: lastMessage && lastMessage.role === "assistant"
-                          ? `${Math.min(95, (lastMessage.parts?.filter((p: any) => p.type === "text").reduce((acc: number, p: any) => acc + (p.text?.length || 0), 0) / 4000) * 100)}%`
+width: lastMessage && lastMessage.role === "assistant"
+                          ? `${Math.min(95, (Array.from(lastMessage.parts).filter((p): p is { type: "text"; text: string } => p.type === "text").reduce((acc, p) => acc + p.text.length, 0) / 4000) * 100)}%`
                           : "0%",
                       }}
                     />

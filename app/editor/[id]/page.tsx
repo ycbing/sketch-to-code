@@ -18,12 +18,6 @@ import { useEditorState } from "@/components/editor/useEditorState";
 import { FRAMEWORK_CONFIGS, type Framework } from "@/lib/frameworks";
 import { cn } from "@/lib/utils";
 
-interface CodeVersion {
-  code: string;
-  timestamp: number;
-  description?: string;
-}
-
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
@@ -100,7 +94,7 @@ export default function EditorPage() {
         if (!template) { state.setError("模板不存在，请返回重试"); return; }
         setIsGeneratingFromTemplate(true);
         await new Promise((r) => setTimeout(r, 500));
-        await state.sendMessage({ text: template.initialPrompt }).catch((err: any) => {
+        await state.sendMessage({ text: template.initialPrompt }).catch((err: Error) => {
           console.error("sendMessage failed:", err);
           state.setError("生成请求失败，请检查网络或 AI 模型配置后重试");
         });
@@ -124,7 +118,7 @@ export default function EditorPage() {
   const saveVersionToDatabase = useCallback(
     async (code: string) => {
       if (!editor) return;
-      try { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ (editor as any).store.getState(); } catch { return; }
+      try { (editor as unknown as { store: { getState: () => unknown } }).store.getState(); } catch { return; }
       try {
         const shapeIds = editor.getCurrentPageShapeIds();
         if (shapeIds.size === 0) return;
@@ -161,14 +155,14 @@ export default function EditorPage() {
   const getCanvasImage = useCallback(async () => {
     if (!editor) { state.setError("画布还在加载中，请稍后重试"); return null; }
     try {
-      try { /* eslint-disable-next-line @typescript-eslint/no-explicit-any */ (editor as any).store.getState(); } catch { state.setError("画布还在初始化中，请稍后重试"); return null; }
+      try { (editor as unknown as { store: { getState: () => unknown } }).store.getState(); } catch { state.setError("画布还在初始化中，请稍后重试"); return null; }
       const shapeIds = editor.getCurrentPageShapeIds();
       if (shapeIds.size === 0) { state.setError("请先在画布上绘制内容，或上传设计稿截图"); return null; }
       const imageRes = await editor.toImage([...shapeIds], { quality: 1, format: "png" });
       return new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => { state.setError("处理画布图片失败"); resolve(null as any); };
+        reader.onerror = () => { state.setError("处理画布图片失败"); resolve(null as unknown as string); };
         reader.readAsDataURL(imageRes.blob);
       });
     } catch (err) { state.setError("捕获画布失败，请重试。"); console.error(err); return null; }

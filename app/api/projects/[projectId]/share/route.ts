@@ -4,18 +4,37 @@ import { projects } from "@/lib/server-db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { initDatabase } from "@/lib/init-db";
+import { auth } from "@/lib/auth";
 
 initDatabase();
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/projects/[projectId]/share — 生成分享链接 */
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const { projectId } = await params;
+
+    const project = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .get();
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (project.userId !== session.user.id) {
+      return NextResponse.json({ error: "无权操作该项目" }, { status: 403 });
+    }
+
     const token = nanoid(16);
 
     await db
@@ -33,13 +52,30 @@ export async function POST(
   }
 }
 
-/** DELETE /api/projects/[projectId]/share — 取消分享 */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const { projectId } = await params;
+
+    const project = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .get();
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    if (project.userId !== session.user.id) {
+      return NextResponse.json({ error: "无权操作该项目" }, { status: 403 });
+    }
 
     await db
       .update(projects)

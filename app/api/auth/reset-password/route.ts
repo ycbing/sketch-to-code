@@ -5,7 +5,19 @@ import { users } from "@/lib/server-db/schema";
 import { nanoid } from "nanoid";
 import bcrypt from "bcryptjs";
 
-const RESET_TOKENS = new Map<string, { email: string; expiresAt: number }>();
+interface ResetToken {
+  email: string;
+  expiresAt: number;
+}
+
+const RESET_TOKENS = new Map<string, ResetToken>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of RESET_TOKENS) {
+    if (data.expiresAt < now) RESET_TOKENS.delete(token);
+  }
+}, 60_000);
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,7 +58,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "重置链接已过期" }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
     await db
       .update(users)
       .set({ password: hashedPassword })

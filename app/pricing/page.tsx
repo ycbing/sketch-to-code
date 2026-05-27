@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, X, Sparkles, ArrowRight, Star, Zap, Shield } from "lucide-react";
+import { Check, X, ArrowRight, Star, Zap, Shield } from "lucide-react";
 import { Button, Card, Badge, Logo, SiteHeader, SiteFooter } from "@/components/ui";
 import { cn } from "@/lib/utils";
 

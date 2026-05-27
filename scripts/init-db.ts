@@ -20,6 +20,7 @@ sqlite.exec(`
     name        TEXT NOT NULL,
     description TEXT,
     user_id     TEXT NOT NULL DEFAULT 'default-user',
+    share_token TEXT UNIQUE,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
   );
@@ -33,6 +34,27 @@ sqlite.exec(`
     generated_code  TEXT NOT NULL,
     requirements    TEXT,
     created_at      TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id          TEXT PRIMARY KEY,
+    email        TEXT NOT NULL UNIQUE,
+    password     TEXT NOT NULL,
+    name         TEXT,
+    credits      INTEGER NOT NULL DEFAULT 200,
+    created_at   TEXT NOT NULL,
+    ai_provider  TEXT,
+    ai_api_key   TEXT,
+    ai_base_url  TEXT,
+    ai_model     TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS credits_log (
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL,
+    amount      INTEGER NOT NULL,
+    reason      TEXT,
+    created_at  TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_versions_project_id ON versions(project_id);

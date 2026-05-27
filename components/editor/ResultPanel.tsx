@@ -30,7 +30,7 @@ interface ResultPanelProps {
 export function ResultPanel({
   isDark, activeTab, onTabChange,
   generatedCode, generatedFiles, activeFile, onActiveFileChange,
-  framework, projectName,
+  framework,
   onCopy, onCopyAll, onDownload, onDownloadAll,
   copied, copiedAll,
 }: ResultPanelProps) {

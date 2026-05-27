@@ -42,3 +42,7 @@ next-env.d.ts
 local.db
 local.db-shm
 local.db-wal
+
+# lock files (using pnpm)
+package-lock.json
+yarn.lock

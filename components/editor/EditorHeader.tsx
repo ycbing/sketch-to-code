@@ -66,7 +66,7 @@ export function EditorHeader({
         <button onClick={onShowKeyboardShortcuts} className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1">
           <Keyboard className="w-3 h-3" /> 快捷键
         </button>
-        <button onClick={onToggleHistory} className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1" title="查看代码历史">
+        <button onClick={onToggleHistory} className={cn("text-xs transition-colors flex items-center gap-1", showHistory ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white")} title="查看代码历史">
           <History className="w-3 h-3" /> 历史 ({codeHistoryLength})
         </button>
         <button

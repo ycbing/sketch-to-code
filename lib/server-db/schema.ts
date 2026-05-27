@@ -36,7 +36,7 @@ export const projects = sqliteTable("projects", {
   name: text("name").notNull(),
   description: text("description"),
   userId: text("user_id").notNull().default("default-user"),
-  shareToken: text("share_token"),
+  shareToken: text("share_token").unique(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

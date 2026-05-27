@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight, Code2, Eye, Loader2, AlertCircle } from "lucide-react";
-import { Button, Card, Logo, SiteHeader } from "@/components/ui";
+import { Button, Logo, SiteHeader } from "@/components/ui";
 import { useTheme } from "@/components/theme-provider";
 
 const PreviewMode = dynamic(
@@ -77,7 +76,7 @@ export default function SharePage() {
         setFiles({ "/App.js": project.latestVersion!.generatedCode });
       });
     }
-  }, [project?.latestVersion?.generatedCode]);
+  }, [project?.latestVersion?.generatedCode, project?.latestVersion]);
 
   if (loading) {
     return (

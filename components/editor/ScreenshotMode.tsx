@@ -2,7 +2,7 @@
 
 import React from "react";
 import {
-  Loader2, ImagePlus, RotateCcw, Search, Smartphone, Palette, Zap, Monitor, X,
+  Loader2, ImagePlus, RotateCcw, Search, Smartphone, Palette, Zap, Monitor,
 } from "lucide-react";
 
 interface ImageInfo {
@@ -19,9 +19,7 @@ interface ScreenshotModeProps {
   isDragging: boolean;
   isStreaming: boolean;
   hasCode: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onFileClick: () => void;
-  onRemoveImage: () => void;
   onGenerate: (prompt?: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnter: (e: React.DragEvent) => void;
@@ -38,7 +36,7 @@ const QUICK_SCENES = [
 
 export function ScreenshotMode({
   uploadedImage, imageInfo, isDark, isDragging, isStreaming, hasCode,
-  fileInputRef, onFileClick, onRemoveImage, onGenerate,
+  onFileClick, onGenerate,
   onDragOver, onDragEnter, onDragLeave, onDrop,
 }: ScreenshotModeProps) {
   return (

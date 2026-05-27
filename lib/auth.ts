@@ -65,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await db.insert(users).values({
             id: nanoid(),
             email: user.email,
-            password: await bcrypt.hash(nanoid(32), 10),
+            password: await bcrypt.hash(nanoid(32), 12),
             name: user.name || user.email.split("@")[0],
             credits: 200,
             createdAt: new Date().toISOString(),
