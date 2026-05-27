@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import dynamic from "next/dynamic";
+import "tldraw/tldraw.css";
 import type { Editor as TldrawEditor } from "tldraw";
 import { Loader2, Sparkles, Undo2, Check, ImagePlus, X, Upload, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,11 +42,19 @@ export function CanvasPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="relative flex flex-col border-r border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 backdrop-blur-sm transition-colors duration-300">
+    <div className="relative flex flex-col border-r border-gray-200 dark:border-white/10 bg-white dark:bg-black/30 transition-colors duration-300">
       <div className="w-full h-full relative">
         <Tldraw onMount={onEditorMount} persistenceKey={`sketch-project-${projectId}`} hideUi={false} />
 
-        <div onDragOver={onDragOver} onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDrop={onDrop} className="absolute inset-0 z-[1500] pointer-events-none">
+        {/* Drag overlay - must be INSIDE tl-container scope, use low z to avoid blocking tldraw UI */}
+        <div
+          onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 10001 }} /* above tldraw's max z-index (10000) only when dragging */
+        >
           {isDragging && (
             <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
               <div className="absolute inset-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-colors border-blue-500 bg-white/80 dark:bg-black/60 dark:border-blue-400">
@@ -54,23 +63,25 @@ export function CanvasPanel({
               </div>
             </div>
           )}
-
-          {uploadedImage && (
-            <div className="absolute top-3 left-3 pointer-events-auto z-[1600]">
-              <div className="group relative rounded-lg overflow-hidden border shadow-lg transition-all border-gray-200 dark:border-white/20 bg-white dark:bg-black/80 shadow-gray-200 dark:shadow-none">
-                <img src={uploadedImage} alt="上传的设计稿" className="w-20 h-20 object-cover" />
-                <button onClick={onRemoveImage} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md bg-white dark:bg-gray-800 hover:bg-red-500 text-gray-700 dark:text-white hover:text-white border border-gray-200 dark:border-none" title="移除图片">
-                  <X className="w-3 h-3" />
-                </button>
-                <div className="absolute bottom-0 left-0 right-0 text-[9px] text-center py-0.5 bg-white/80 dark:bg-black/70 text-gray-600 dark:text-gray-300">设计稿</div>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Uploaded image thumbnail - positioned relative to page, above tldraw */}
+        {uploadedImage && (
+          <div className="absolute top-3 left-3" style={{ zIndex: 10002 }}>
+            <div className="group relative rounded-lg overflow-hidden border shadow-lg transition-all border-gray-200 dark:border-white/20 bg-white dark:bg-black/80 shadow-gray-200 dark:shadow-none">
+              <img src={uploadedImage} alt="上传的设计稿" className="w-20 h-20 object-cover" />
+              <button onClick={onRemoveImage} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center transition-colors shadow-md bg-white dark:bg-gray-800 hover:bg-red-500 text-gray-700 dark:text-white hover:text-white border border-gray-200 dark:border-none" title="移除图片">
+                <X className="w-3 h-3" />
+              </button>
+              <div className="absolute bottom-0 left-0 right-0 text-[9px] text-center py-0.5 bg-white/80 dark:bg-black/70 text-gray-600 dark:text-gray-300">设计稿</div>
+            </div>
+          </div>
+        )}
 
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={onFileInput} className="hidden" />
 
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[2000] w-[90%] max-w-lg">
+        {/* Generate bar - positioned at bottom, above tldraw */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-lg" style={{ zIndex: 10002 }}>
           <div className="backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-2xl p-4 shadow-2xl bg-white/95 dark:bg-black/80 shadow-gray-300/50 dark:shadow-black/50 transition-colors duration-300">
             {uploadedImage && (
               <div className="mb-3 flex items-center gap-3 p-2 rounded-lg border border-dashed border-gray-300 dark:border-white/20">
